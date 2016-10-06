@@ -44,6 +44,7 @@ import android.text.style.TypefaceSpan;
 import android.text.style.URLSpan;
 import android.text.style.UnderlineSpan;
 import android.text.util.Linkify;
+import android.util.Log;
 import android.util.Pair;
 
 import com.zulip.android.R;
@@ -456,13 +457,24 @@ public class CustomHtmlToSpannedConverter implements ContentHandler {
         if (href != null && !href.startsWith("http")) {
             String prefix;
             if (!href.startsWith("/")) {
-                prefix = baseUri + "/";
+                if (href.startsWith("user_uploads")) {
+                    int indexOfApiPath = baseUri.indexOf("/api");
+                    prefix = baseUri.substring(0, indexOfApiPath) + "/";
+                } else {
+                    prefix = baseUri + "/";
+                }
             } else {
-                prefix = baseUri;
+                if (href.startsWith("/user_uploads")) {
+                    int indexOfApiPath = baseUri.indexOf("/api");
+                    prefix = baseUri.substring(0, indexOfApiPath);
+                } else {
+                    prefix = baseUri;
+                }
             }
             href = prefix + href;
         }
 
+        Log.e("Hola", href);
         int len = text.length();
         text.setSpan(new Href(href), len, len, Spannable.SPAN_MARK_MARK);
     }
@@ -742,6 +754,7 @@ public class CustomHtmlToSpannedConverter implements ContentHandler {
      * @return
      */
     public static Spanned linkifySpanned(@NonNull final Spanned spann, final int mask) {
+        Log.e("OLAAAA", spann.toString());
         URLSpan[] existingSpans = spann.getSpans(0, spann.length(), URLSpan.class);
         List<Pair<Integer, Integer>> links = new ArrayList<>();
 
@@ -756,6 +769,7 @@ public class CustomHtmlToSpannedConverter implements ContentHandler {
             ((Spannable) spann).setSpan(existingSpans[i], links.get(i).first, links.get(i).second, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
+        //Log.e("OLAAAA", links.toString());
         return spann;
     }
 

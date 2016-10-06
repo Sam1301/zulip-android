@@ -562,8 +562,12 @@ public class Message {
             }
         };
 
+        Log.e("yo", app.getServerURI());
         CustomHtmlToSpannedConverter converter = new CustomHtmlToSpannedConverter(
                 source, null, null, parser, emojiGetter, app.getServerURI(), context);
+
+//        CustomHtmlToSpannedConverter converter = new CustomHtmlToSpannedConverter(
+//                source, null, null, parser, emojiGetter, "https://zulip.com", context);
 
         return CustomHtmlToSpannedConverter.linkifySpanned(converter.convert(), Linkify.ALL);
     }
