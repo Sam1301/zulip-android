@@ -402,8 +402,14 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
             int mID = message.getID();
             if (!startedFromFilter && zulipApp.getPointer() < mID) {
                 zulipApp.syncPointer(mID);
+                Log.e("ooooooo", "pointer updated!");
             }
-            if (!message.getMessageRead()) {
+
+            boolean isMessageRead = false;
+            if (message.getMessageRead() != null) {
+                isMessageRead = message.getMessageRead();
+            }
+            if (!isMessageRead) {
                 try {
                     updateBuilder.where().eq(Message.ID_FIELD, message.getID());
                     updateBuilder.updateColumnValue(Message.MESSAGE_READ_FIELD, true);
@@ -413,6 +419,7 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 }
             }
             zulipApp.markMessageAsRead(message);
+            Log.e("ooooooo", "message read!");
         } catch (NullPointerException e) {
             Log.w("scrolling", "Could not find a location to scroll to!");
         }
