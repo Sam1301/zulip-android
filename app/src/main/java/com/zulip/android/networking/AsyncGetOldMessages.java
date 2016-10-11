@@ -80,7 +80,7 @@ public class AsyncGetOldMessages extends ZulipAsyncPushTask {
                 MessageRange protoRng = MessageRange.getRangeContaining(
                         mainAnchor, messageRangeDao);
                 Log.i("AGOM", "rng retreived");
-                if (/*protoRng != null*/false) {
+                if (protoRng != null/*false*/) {
 
                     StopWatch watch = new StopWatch();
                     watch.start();

@@ -606,11 +606,11 @@ public class Message {
     public Person getSender() {
         if(sender == null) {
             RuntimeExceptionDao<Person, Object> dao = ZulipApp.get().getDao(Person.class, true);
-            /*try {
+            try {
                 sender = dao.queryBuilder().where().eq(Person.EMAIL_FIELD, senderEmail).queryForFirst();
             } catch (SQLException e) {
                 ZLog.logException(e);
-            }*/
+            }
             if(sender == null) {
                 sender = new Person(senderFullName, senderEmail, avatarUrl, senderId);
                 try {

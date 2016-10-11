@@ -389,7 +389,7 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     @Override
     public void onViewAttachedToWindow(RecyclerView.ViewHolder holder) {
         super.onViewRecycled(holder);
-        if (holder.getItemViewType() == VIEWTYPE_MESSAGE)
+        if (holder.getItemViewType() == VIEWTYPE_MESSAGE && !startedFromFilter)
             markThisMessageAsRead((Message) getItem(holder.getAdapterPosition()));
     }
 
@@ -400,9 +400,8 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     private void markThisMessageAsRead(Message message) {
         try {
             int mID = message.getID();
-            if (!startedFromFilter && zulipApp.getPointer() < mID) {
+            if (zulipApp.getPointer() < mID) {
                 zulipApp.syncPointer(mID);
-                Log.e("ooooooo", "pointer updated!");
             }
 
             boolean isMessageRead = false;
@@ -419,7 +418,6 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                 }
             }
             zulipApp.markMessageAsRead(message);
-            Log.e("ooooooo", "message read!");
         } catch (NullPointerException e) {
             Log.w("scrolling", "Could not find a location to scroll to!");
         }
