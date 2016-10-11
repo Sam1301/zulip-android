@@ -67,10 +67,18 @@ public class Person {
         this.setEmail(email);
     }
 
+
     public Person(String name, String email, String avatarURL) {
         this(name, email);
         this.setAvatarURL(avatarURL);
         this.isActive = false;
+    }
+
+    public Person(String name, String email, String avatarURL, int id) {
+        this(name, email);
+        this.setAvatarURL(avatarURL);
+        this.isActive = false;
+        this.setId(id);
     }
 
     /**

@@ -612,7 +612,7 @@ public class Message {
                 ZLog.logException(e);
             }*/
             if(sender == null) {
-                sender = new Person(senderFullName, senderEmail, avatarUrl);
+                sender = new Person(senderFullName, senderEmail, avatarUrl, senderId);
                 try {
                     dao.createOrUpdate(sender);
                 }
