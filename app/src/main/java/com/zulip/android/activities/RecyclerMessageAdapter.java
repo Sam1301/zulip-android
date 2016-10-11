@@ -451,6 +451,9 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
                     35, resources.getDisplayMetrics());
             String url = message.getSender().getAvatarURL() + "&s=" + px;
 
+            if (url.startsWith("/user_avatars")) {
+                url = "https://zulip.tabbott.net" + url;
+            }
             Picasso.with(context)
                     .load(url)
                     .placeholder(android.R.drawable.stat_notify_error)
