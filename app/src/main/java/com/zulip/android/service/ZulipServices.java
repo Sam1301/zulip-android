@@ -7,13 +7,17 @@ import com.zulip.android.networking.response.UserConfigurationResponse;
 import com.zulip.android.networking.response.ZulipBackendResponse;
 import com.zulip.android.networking.response.events.GetEventResponse;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Field;
 import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
+import retrofit2.http.Multipart;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
+import retrofit2.http.Part;
 import retrofit2.http.Query;
 
 
@@ -52,4 +56,7 @@ public interface ZulipServices {
     @POST("v1/dev_fetch_api_key")
     Call<LoginResponse> loginDEV(@Field("username") String username);
 
+    @Multipart
+    @POST("upload")
+    Call<ResponseBody> upload(@Part("description") RequestBody description, @Part MultipartBody.Part file);
 }
