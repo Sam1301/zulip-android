@@ -137,6 +137,7 @@ public class ZulipActivity extends BaseActivity implements
 
     private boolean suspended = false;
     private boolean logged_in = false;
+    private boolean isMessageShared = false;
 
     private ZulipActivity that = this; // self-ref
     private SharedPreferences settings;
@@ -556,8 +557,30 @@ public class ZulipActivity extends BaseActivity implements
             }
         });
         messageEt.setAdapter(combinedAdapter);
+
+        showShareMessage();
     }
 
+    private void showShareMessage() {
+        // getintent
+        Intent shareIntent = getIntent();
+        String messageShared = shareIntent.getStringExtra(ShareActivity.SHARE_KEY);
+        if (messageShared != null) {
+            if (!messageShared.equals("")) {
+                isMessageShared = true;
+            }
+        }
+        /*if (shareIntent.getType() == null) {
+            Log.e("shareintent", shareIntent.getData().toString());
+        }*/
+
+        if (isMessageShared) {
+            displayFAB(false);
+            displayChatBox(true);
+            messageEt.setText(messageShared);
+            sendMessage();
+        }
+    }
     /**
      * Returns a cursor for the combinedAdapter used to suggest Emoji when ':' is typed in the {@link #messageEt}
      * @param emoji A string to search in the existing database
