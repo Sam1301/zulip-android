@@ -24,6 +24,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Environment;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.design.widget.AppBarLayout;
@@ -32,6 +33,7 @@ import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
@@ -60,8 +62,8 @@ import android.widget.SimpleCursorTreeAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.JsonObject;
 import com.j256.ormlite.android.AndroidDatabaseResults;
+import com.soundcloud.android.crop.Crop;
 import com.zulip.android.BuildConfig;
 import com.zulip.android.R;
 import com.zulip.android.ZulipApp;
@@ -89,7 +91,6 @@ import com.zulip.android.networking.ZulipAsyncPushTask;
 import com.zulip.android.util.AnimationHelper;
 import com.zulip.android.util.MutedTopics;
 import com.zulip.android.util.SwipeRemoveLinearLayout;
-import com.zulip.android.util.UrlHelper;
 import com.zulip.android.util.ZLog;
 
 import org.json.JSONException;
@@ -98,12 +99,8 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -117,6 +114,8 @@ import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import static android.os.Environment.getExternalStoragePublicDirectory;
 
 /**
  * The main Activity responsible for holding the {@link MessageListFragment} which has the list to the
@@ -132,6 +131,7 @@ public class ZulipActivity extends BaseActivity implements
     //At these many letters the emoji/person hint starts to show up
     private static final int MIN_THRESOLD_EMOJI_HINT = 1;
     private static final int REQUEST_IMAGE_GET = 1;
+    private static final int REQUEST_TAKE_PHOTO = 2;
     private ZulipApp app;
     private List<Message> mutedTopics;
 
@@ -171,7 +171,11 @@ public class ZulipActivity extends BaseActivity implements
     private TextView textView;
     private ImageView sendBtn;
     private ImageView attachBtn;
+    private ImageView photoBtn;
     private String mFilePath;
+    private String mPhotoPath;
+    private Uri mPhotoURI;
+    private Uri mPhotoCropUri;
     private ImageView togglePrivateStreamBtn;
     private Notifications notifications;
     private SimpleCursorAdapter streamActvAdapter;
@@ -329,6 +333,7 @@ public class ZulipActivity extends BaseActivity implements
         textView = (TextView) findViewById(R.id.textView);
         sendBtn = (ImageView) findViewById(R.id.send_btn);
         attachBtn = (ImageView) findViewById(R.id.attach_btn);
+        photoBtn = (ImageView) findViewById(R.id.photo_btn);
         appBarLayout = (AppBarLayout) findViewById(R.id.appBarLayout);
         app.setZulipActivity(this);
         togglePrivateStreamBtn = (ImageView) findViewById(R.id.togglePrivateStream_btn);
@@ -469,6 +474,12 @@ public class ZulipActivity extends BaseActivity implements
             @Override
             public void onClick(View v) {
                 pickAfile();
+            }
+        });
+        photoBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dispatchTakePictureIntent();
             }
         });
         composeStatus = (LinearLayout) findViewById(R.id.composeStatus);
@@ -943,7 +954,7 @@ public class ZulipActivity extends BaseActivity implements
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1)
+        if (requestCode == REQUEST_IMAGE_GET) {
             if (resultCode == Activity.RESULT_OK) {
                 Uri selectedImage = data.getData();
 
@@ -952,14 +963,27 @@ public class ZulipActivity extends BaseActivity implements
 
                 uploadPhoto(filePath);
                 Toast.makeText(this, filePath, Toast.LENGTH_LONG).show();
-                    if (file_extn.equals("img") || file_extn.equals("jpg") || file_extn.equals("jpeg") || file_extn.equals("gif") || file_extn.equals("png")) {
-                        //FINE
+                if (file_extn.equals("img") || file_extn.equals("jpg") || file_extn.equals("jpeg") || file_extn.equals("gif") || file_extn.equals("png")) {
+                    //FINE
 
-                    } else {
-                        //NOT IN REQUIRED FORMAT
-                    }
+                } else {
+                    //NOT IN REQUIRED FORMAT
+                }
 
             }
+        } else if (requestCode == REQUEST_TAKE_PHOTO && resultCode == RESULT_OK) {
+//                Bundle extras = data.getExtras();
+//                Bitmap imageBitmap = (Bitmap) extras.get("data");
+//                mImageView.setImageBitmap(imageBitmap);
+            // tell mediaplayer to add pic to is database
+            galleryAddPic();
+            // Use mPhotopath to start cropping asynchronously
+            mPhotoCropUri = null;
+            Crop.of(mPhotoURI, mPhotoCropUri).asSquare().start(this);
+//            Log.e("Crop", outputUri.toString());
+        } else if (requestCode == Crop.REQUEST_CROP && resultCode == RESULT_OK) {
+            Log.e("Crop", mPhotoCropUri.toString());
+        }
     }
 
     public String getPath(Uri uri) {
@@ -1025,25 +1049,58 @@ public class ZulipActivity extends BaseActivity implements
                 Log.e("Upload", "success");
             }
 
-            private String readFromStream(InputStream inputStream) throws IOException {
-                StringBuilder output = new StringBuilder();
-                if (inputStream != null) {
-                    InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
-                    BufferedReader reader = new BufferedReader(inputStreamReader);
-                    String line = reader.readLine();
-                    while (line != null) {
-                        output.append(line);
-                        line = reader.readLine();
-                    }
-                }
-                return output.toString();
-            }
-
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Log.e("Upload error:", t.getMessage());
             }
         });
+    }
+
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                mPhotoURI = FileProvider.getUriForFile(this,
+                        "com.example.android.fileprovider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mPhotoURI);
+                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+            }
+        }
+    }
+
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mPhotoPath = "file:" + image.getAbsolutePath();
+        return image;
+    }
+
+    private void galleryAddPic() {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        File f = new File(mPhotoPath);
+        Uri contentUri = Uri.fromFile(f);
+        mediaScanIntent.setData(contentUri);
+        this.sendBroadcast(mediaScanIntent);
     }
 
     /**

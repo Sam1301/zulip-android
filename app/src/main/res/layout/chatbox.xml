@@ -58,6 +58,13 @@
 
 
         <ImageView
+            android:id="@+id/photo_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="4dp"
+            android:src="@drawable/ic_camera_alt_black_24dp"
+            android:tint="#757575" />
+        <ImageView
             android:id="@+id/attach_btn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
