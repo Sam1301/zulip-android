@@ -57,6 +57,6 @@ public interface ZulipServices {
     Call<LoginResponse> loginDEV(@Field("username") String username);
 
     @Multipart
-    @POST("upload")
+    @POST("v1/user_uploads")
     Call<ResponseBody> upload(@Part("description") RequestBody description, @Part MultipartBody.Part file);
 }

@@ -1,16 +1,9 @@
 package com.zulip.android.activities;
 
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
-
 import android.animation.Animator;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.BroadcastReceiver;
@@ -27,10 +20,12 @@ import android.database.MergeCursor;
 import android.graphics.Bitmap;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActionBarDrawerToggle;
@@ -42,7 +37,6 @@ import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SimpleCursorAdapter;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
@@ -66,48 +60,63 @@ import android.widget.SimpleCursorTreeAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.JsonObject;
 import com.j256.ormlite.android.AndroidDatabaseResults;
 import com.zulip.android.BuildConfig;
+import com.zulip.android.R;
+import com.zulip.android.ZulipApp;
 import com.zulip.android.database.DatabaseHelper;
-import com.zulip.android.models.Emoji;
-import com.zulip.android.filters.NarrowFilterToday;
-import com.zulip.android.models.Message;
-import com.zulip.android.models.MessageType;
 import com.zulip.android.filters.NarrowFilter;
 import com.zulip.android.filters.NarrowFilterAllPMs;
 import com.zulip.android.filters.NarrowFilterPM;
 import com.zulip.android.filters.NarrowFilterSearch;
 import com.zulip.android.filters.NarrowFilterStream;
+import com.zulip.android.filters.NarrowFilterToday;
 import com.zulip.android.filters.NarrowListener;
+import com.zulip.android.gcm.GcmBroadcastReceiver;
 import com.zulip.android.gcm.Notifications;
+import com.zulip.android.models.Emoji;
+import com.zulip.android.models.Message;
+import com.zulip.android.models.MessageType;
 import com.zulip.android.models.Person;
 import com.zulip.android.models.Presence;
 import com.zulip.android.models.PresenceType;
-import com.zulip.android.R;
 import com.zulip.android.models.Stream;
+import com.zulip.android.networking.AsyncGetEvents;
 import com.zulip.android.networking.AsyncSend;
-import com.zulip.android.networking.ZulipInterceptor;
-import com.zulip.android.networking.response.UserConfigurationResponse;
-import com.zulip.android.service.ZulipServices;
+import com.zulip.android.networking.AsyncStatusUpdate;
+import com.zulip.android.networking.ZulipAsyncPushTask;
 import com.zulip.android.util.AnimationHelper;
 import com.zulip.android.util.MutedTopics;
 import com.zulip.android.util.SwipeRemoveLinearLayout;
+import com.zulip.android.util.UrlHelper;
 import com.zulip.android.util.ZLog;
-import com.zulip.android.ZulipApp;
-import com.zulip.android.gcm.GcmBroadcastReceiver;
-import com.zulip.android.networking.AsyncGetEvents;
-import com.zulip.android.networking.AsyncStatusUpdate;
-import com.zulip.android.networking.ZulipAsyncPushTask;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
-import okhttp3.OkHttpClient;
-import okhttp3.Response;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.Callable;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.Response;
 
 /**
  * The main Activity responsible for holding the {@link MessageListFragment} which has the list to the
@@ -122,6 +131,7 @@ public class ZulipActivity extends BaseActivity implements
     private static final int MAX_THRESOLD_EMOJI_HINT = 5;
     //At these many letters the emoji/person hint starts to show up
     private static final int MIN_THRESOLD_EMOJI_HINT = 1;
+    private static final int REQUEST_IMAGE_GET = 1;
     private ZulipApp app;
     private List<Message> mutedTopics;
 
@@ -159,6 +169,8 @@ public class ZulipActivity extends BaseActivity implements
     private AutoCompleteTextView messageEt;
     private TextView textView;
     private ImageView sendBtn;
+    private ImageView attachBtn;
+    private String mFilePath;
     private ImageView togglePrivateStreamBtn;
     private Notifications notifications;
     private SimpleCursorAdapter streamActvAdapter;
@@ -315,6 +327,7 @@ public class ZulipActivity extends BaseActivity implements
         messageEt = (AutoCompleteTextView) findViewById(R.id.message_et);
         textView = (TextView) findViewById(R.id.textView);
         sendBtn = (ImageView) findViewById(R.id.send_btn);
+        attachBtn = (ImageView) findViewById(R.id.attach_btn);
         appBarLayout = (AppBarLayout) findViewById(R.id.appBarLayout);
         app.setZulipActivity(this);
         togglePrivateStreamBtn = (ImageView) findViewById(R.id.togglePrivateStream_btn);
@@ -447,6 +460,14 @@ public class ZulipActivity extends BaseActivity implements
             @Override
             public void onClick(View v) {
                 sendMessage();
+            }
+        });
+        // onclick listener for attach files button to start an implicit intent
+        // for picking a file to upload
+        attachBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickAfile();
             }
         });
         composeStatus = (LinearLayout) findViewById(R.id.composeStatus);
@@ -858,7 +879,17 @@ public class ZulipActivity extends BaseActivity implements
             msg.setType(messageType);
             msg.setRecipient(topicActv.getText().toString().split(","));
         }
-        msg.setContent(messageEt.getText().toString());
+
+        // add uploaded file link if exists
+        if (mFilePath != null ) {
+            if (!mFilePath.equals("")) {
+                mFilePath = "https://zulip.tabbott.net" + mFilePath;
+                msg.setContent(messageEt.getText().toString() + "\n" + mFilePath);
+            }
+        } else {
+            msg.setContent(messageEt.getText().toString());
+        }
+
         AsyncSend sender = new AsyncSend(that, msg);
         sender.setCallback(new ZulipAsyncPushTask.AsyncTaskCompleteListener() {
             public void onTaskComplete(String result, JSONObject jsonObject) {
@@ -874,6 +905,122 @@ public class ZulipActivity extends BaseActivity implements
             }
         });
         sender.execute();
+    }
+
+    /**
+     * Starts an implicit intent to get a local file Uri to upload to server
+     * @return uri of local file to be uploaded
+     */
+    private void pickAfile() {
+        Intent photoPickerIntent = new Intent(Intent.ACTION_PICK);
+        photoPickerIntent.setType("image/*");
+        startActivityForResult(photoPickerIntent, REQUEST_IMAGE_GET);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1)
+            if (resultCode == Activity.RESULT_OK) {
+                Uri selectedImage = data.getData();
+
+                String filePath = getPath(selectedImage);
+                String file_extn = filePath.substring(filePath.lastIndexOf(".") + 1);
+
+                uploadPhoto(filePath);
+                Toast.makeText(this, filePath, Toast.LENGTH_LONG).show();
+                    if (file_extn.equals("img") || file_extn.equals("jpg") || file_extn.equals("jpeg") || file_extn.equals("gif") || file_extn.equals("png")) {
+                        //FINE
+
+                    } else {
+                        //NOT IN REQUIRED FORMAT
+                    }
+
+            }
+    }
+
+    public String getPath(Uri uri) {
+        String[] projection = {MediaStore.MediaColumns.DATA};
+        Cursor cursor = managedQuery(uri, projection, null, null, null);
+        int column_index = cursor
+                .getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
+        cursor.moveToFirst();
+        String imagePath = cursor.getString(column_index);
+
+        return imagePath;
+    }
+
+    private void uploadPhoto(String filePath) {
+        // https://github.com/iPaulPro/aFileChooser/blob/master/aFileChooser/src/com/ipaulpro/afilechooser/utils/FileUtils.java
+        // use the FileUtils to get the actual file by uri
+        File file = new File(filePath);
+
+        // create RequestBody instance from file
+        RequestBody requestFile =
+                RequestBody.create(MediaType.parse("multipart/form-data"), file);
+
+        // MultipartBody.Part is used to send also the actual file name
+        MultipartBody.Part body =
+                MultipartBody.Part.createFormData("picture", file.getName(), requestFile);
+
+        // add another part within the multipart request
+        String descriptionString = "hello, this is description speaking";
+        RequestBody description =
+                RequestBody.create(
+                        MediaType.parse("multipart/form-data"), descriptionString);
+
+        // finally, execute the request
+        // create upload service client
+        Call<ResponseBody> call = app.getZulipServices().upload(description, body);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call,
+                                   Response<ResponseBody> response) {
+                // TODO: Do json parsing asynchronously
+                JSONObject baseJsonResponse = null;
+                try {
+                    StringBuilder output = new StringBuilder();
+                    BufferedReader reader = new BufferedReader(response.body().charStream());
+                    String line = reader.readLine();
+                    while (line != null) {
+                        output.append(line);
+                        line = reader.readLine();
+                    }
+                    String jsonResponse = output.toString();
+//                    Log.e("Upload", jsonResponse);
+                    baseJsonResponse = new JSONObject(jsonResponse);
+                    mFilePath = baseJsonResponse.optString("uri");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                if (mFilePath == null) {
+                    mFilePath = "";
+                }
+                Log.e("FilePath",mFilePath);
+                Log.e("Upload", "success");
+            }
+
+            private String readFromStream(InputStream inputStream) throws IOException {
+                StringBuilder output = new StringBuilder();
+                if (inputStream != null) {
+                    InputStreamReader inputStreamReader = new InputStreamReader(inputStream, Charset.forName("UTF-8"));
+                    BufferedReader reader = new BufferedReader(inputStreamReader);
+                    String line = reader.readLine();
+                    while (line != null) {
+                        output.append(line);
+                        line = reader.readLine();
+                    }
+                }
+                return output.toString();
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("Upload error:", t.getMessage());
+            }
+        });
     }
 
     /**
