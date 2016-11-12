@@ -532,14 +532,14 @@ public class Message {
             public Drawable getDrawable(String source) {
                 int imagesIndex = -1;
                 if (source != null) {
-                    imagesIndex = source.indexOf("images");
+                    imagesIndex = source.indexOf("images/");
                 }
                 if (imagesIndex != -1) {
-                    String endPath = source.substring(imagesIndex + 1);
+                    String filename = source.substring(imagesIndex + "images/".length());
+
                     try {
                         Drawable drawable = Drawable.createFromStream(context
-                                        .getAssets().open("emoji/" + filename),
-                                "emoji/" + filename);
+                                        .getAssets().open(filename), filename);
                         if (drawable == null) {
                             Drawable transparentDrawable = new ColorDrawable(Color.TRANSPARENT);
                             transparentDrawable.setBounds(new Rect(0, 0, 0, 0));
