@@ -535,6 +535,9 @@ public class ZulipActivity extends BaseActivity implements
             if (type.startsWith("image/")) {
                 // Handle single image being sent
                 handleSentImage(intent);
+            } else if ("text/plain".equals(type)) {
+                // Handle text being sent
+                handleSentText(intent);
             }
         }
     }
@@ -551,7 +554,24 @@ public class ZulipActivity extends BaseActivity implements
             if (type.startsWith("image/")) {
                 // Handle single image being sent
                 handleSentImage(intent);
+            } else if ("text/plain".equals(type)) {
+                // Handle text being sent
+                handleSentText(intent);
             }
+        }
+    }
+
+    /**
+     * Function invoked when a user shares a text with the zulip app
+     * @param intent passed to the activity with action SEND
+     */
+    private void handleSentText(Intent intent) {
+        String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (sharedText != null) {
+            // Update UI to reflect text being shared
+            displayFAB(false);
+            displayChatBox(true);
+            messageEt.setText(" " + sharedText);
         }
     }
 
