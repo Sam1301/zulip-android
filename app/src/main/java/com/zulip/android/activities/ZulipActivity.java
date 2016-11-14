@@ -173,7 +173,7 @@ public class ZulipActivity extends BaseActivity implements
         }
     };
     private ExpandableStreamDrawerAdapter streamsDrawerAdapter;
-    private Uri mImageUri;
+    private Uri mFileUri;
 
     @Override
     public void removeChatBox(boolean animToRight) {
@@ -532,12 +532,12 @@ public class ZulipActivity extends BaseActivity implements
         String type = intent.getType();
 
         if (Intent.ACTION_SEND.equals(action) && type != null) {
-            if (type.startsWith("image/")) {
-                // Handle single image being sent
-                handleSentImage(intent);
-            } else if ("text/plain".equals(type)) {
+            if ("text/plain".equals(type)) {
                 // Handle text being sent
                 handleSentText(intent);
+            } else {
+                // Handle any type of file
+                handleSentFile(intent);
             }
         }
     }
@@ -551,12 +551,12 @@ public class ZulipActivity extends BaseActivity implements
         String type = intent.getType();
 
         if (Intent.ACTION_SEND.equals(action) && type != null) {
-            if (type.startsWith("image/")) {
-                // Handle single image being sent
-                handleSentImage(intent);
-            } else if ("text/plain".equals(type)) {
+            if ("text/plain".equals(type)) {
                 // Handle text being sent
                 handleSentText(intent);
+            } else {
+                // Handle any type of file
+                handleSentFile(intent);
             }
         }
     }
@@ -576,12 +576,12 @@ public class ZulipActivity extends BaseActivity implements
     }
 
     /**
-     * Function invoked when a user shares an image with the zulip app
+     * Function invoked when a user shares a file with the zulip app
      * @param intent passed to the activity with action SEND
      */
-    private void handleSentImage(Intent intent) {
-        mImageUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        if (mImageUri != null) {
+    private void handleSentFile(Intent intent) {
+        mFileUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        if (mFileUri != null) {
             // check if user has granted read external storage permission
             // for Android 6.0 or higher
             if (ContextCompat.checkSelfPermission(this,
@@ -597,7 +597,7 @@ public class ZulipActivity extends BaseActivity implements
                 startFileUpload();
             }
         } else {
-            Toast.makeText(this, R.string.cannot_find_image, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.cannot_find_file, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -615,7 +615,7 @@ public class ZulipActivity extends BaseActivity implements
                     startFileUpload();
                 } else {
                     // permission denied
-                    Toast.makeText(this, R.string.cannot_upload_image, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.cannot_upload_file, Toast.LENGTH_SHORT).show();
                 }
             }
             break;
@@ -623,11 +623,11 @@ public class ZulipActivity extends BaseActivity implements
     }
 
     /**
-     * Helper function to update UI to indicate image is being uploaded and call
-     * {@link ZulipActivity#uploadFile(File)} to upload the image.
+     * Helper function to update UI to indicate file is being uploaded and call
+     * {@link ZulipActivity#uploadFile(File)} to upload the file.
      */
     private void startFileUpload() {
-        // Update UI to indicate image is being loaded
+        // Update UI to indicate file is being loaded
         // hide fab and display chatbox
         displayFAB(false);
         displayChatBox(true);
@@ -635,20 +635,20 @@ public class ZulipActivity extends BaseActivity implements
         sendingMessage(true, loadingMsg);
 
         File file = null;
-        if (FilePathHelper.isLegacy(mImageUri)) {
-            file = FilePathHelper.getTempFileFromContentUri(this, mImageUri);
+        if (FilePathHelper.isLegacy(mFileUri)) {
+            file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
         } else {
             // get actual file path
-            String imageFilePath = FilePathHelper.getPath(this, mImageUri);
-            if (imageFilePath != null) {
-                file = new File(imageFilePath);
-            } else if ("content".equalsIgnoreCase(mImageUri.getScheme())) {
-                file = FilePathHelper.getTempFileFromContentUri(this, mImageUri);
+            String filePath = FilePathHelper.getPath(this, mFileUri);
+            if (filePath != null) {
+                file = new File(filePath);
+            } else if ("content".equalsIgnoreCase(mFileUri.getScheme())) {
+                file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
             }
         }
 
         if (file == null) {
-            Toast.makeText(this, R.string.invalid_image, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.invalid_file, Toast.LENGTH_SHORT).show();
             return;
         }
         // upload the file asynchronously to the server
@@ -668,7 +668,7 @@ public class ZulipActivity extends BaseActivity implements
 
         // MultipartBody.Part is used to send also the actual file name
         MultipartBody.Part body =
-                MultipartBody.Part.createFormData("picture", file.getName(), requestFile);
+                MultipartBody.Part.createFormData("file", file.getName(), requestFile);
 
         final String loadingMsg = getResources().getString(R.string.uploading_message);
 
@@ -681,8 +681,8 @@ public class ZulipActivity extends BaseActivity implements
                                    Response<UploadResponse> response) {
                 if (response.isSuccessful()) {
                     String filePathOnServer = "";
-                        UploadResponse uploadResponse = response.body();
-                        filePathOnServer = uploadResponse.getUri();
+                    UploadResponse uploadResponse = response.body();
+                    filePathOnServer = uploadResponse.getUri();
                     if (!filePathOnServer.equals("")) {
                         // remove loading message from the screen
                         sendingMessage(false, loadingMsg);
