@@ -18,13 +18,16 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.database.MergeCursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Environment;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActionBarDrawerToggle;
@@ -32,6 +35,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
@@ -96,7 +100,9 @@ import com.zulip.android.util.ZLog;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -154,6 +160,7 @@ public class ZulipActivity extends BaseActivity implements
     private AutoCompleteTextView messageEt;
     private TextView textView;
     private ImageView sendBtn;
+    private ImageView cameraBtn;
     private ImageView togglePrivateStreamBtn;
     private Notifications notifications;
     private SimpleCursorAdapter streamActvAdapter;
@@ -306,6 +313,7 @@ public class ZulipActivity extends BaseActivity implements
         messageEt = (AutoCompleteTextView) findViewById(R.id.message_et);
         textView = (TextView) findViewById(R.id.textView);
         sendBtn = (ImageView) findViewById(R.id.send_btn);
+        cameraBtn = (ImageView) findViewById(R.id.camera_btn);
         appBarLayout = (AppBarLayout) findViewById(R.id.appBarLayout);
         app.setZulipActivity(this);
         togglePrivateStreamBtn = (ImageView) findViewById(R.id.togglePrivateStream_btn);
@@ -439,6 +447,16 @@ public class ZulipActivity extends BaseActivity implements
                 sendMessage();
             }
         });
+
+        // set onClick listener on camera button to dispatch camera intent
+        cameraBtn.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+                dispatchTakePictureIntent();
+            }
+        });
+
         composeStatus = (LinearLayout) findViewById(R.id.composeStatus);
         setUpAdapter();
         streamActv.setAdapter(streamActvAdapter);
@@ -526,6 +544,11 @@ public class ZulipActivity extends BaseActivity implements
         });
         messageEt.setAdapter(combinedAdapter);
 
+        // if device doesn't have camera, disable photo capture button
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
+            cameraBtn.setEnabled(false);
+        }
+
         // Get intent, action and MIME type
         Intent intent = getIntent();
         String action = intent.getAction();
@@ -555,6 +578,100 @@ public class ZulipActivity extends BaseActivity implements
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_TAKE_PHOTO && resultCode == RESULT_OK) {
+//            Bundle extras = data.getExtras();
+//            Bitmap imageBitmap = (Bitmap) extras.get("data");
+//            mImageView.setImageBitmap(imageBitmap);
+            Log.i("photo captured", mCurrentPhotoPath);
+        }
+    }
+
+    static final int REQUEST_TAKE_PHOTO = 1;
+
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createPhotoFile();
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+                Log.e("photo error", "photo file create error");
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoURI = FileProvider.getUriForFile(this,
+                        "com.zulip.fileprovider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+            }
+        }
+    }
+
+    String mCurrentPhotoPath;
+
+    /**
+     * This function creates a file for the photo captured
+     * @return new {@link File} object for photo
+     * @throws IOException
+     */
+    private File createPhotoFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir =  Environment
+                .getExternalStoragePublicDirectory((Environment.DIRECTORY_PICTURES));
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = "file:" + image.getAbsolutePath();
+        return image;
+    }
+
+    /**
+     * This function adds the captures photo to the Android gallery
+     */
+    private void galleryAddPic() {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        File f = new File(mCurrentPhotoPath);
+        Uri contentUri = Uri.fromFile(f);
+        mediaScanIntent.setData(contentUri);
+        this.sendBroadcast(mediaScanIntent);
+    }
+
+    /*private void setPic() {
+        // Get the dimensions of the View
+        int targetW = mImageView.getWidth();
+        int targetH = mImageView.getHeight();
+
+        // Get the dimensions of the bitmap
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        bmOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
+        int photoW = bmOptions.outWidth;
+        int photoH = bmOptions.outHeight;
+
+        // Determine how much to scale down the image
+        int scaleFactor = Math.min(photoW/targetW, photoH/targetH);
+
+        // Decode the image file into a Bitmap sized to fill the View
+        bmOptions.inJustDecodeBounds = false;
+        bmOptions.inSampleSize = scaleFactor;
+        bmOptions.inPurgeable = true;
+
+        Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
+        mImageView.setImageBitmap(bitmap);
+    }
+    */
     /**
      * Function invoked when a user shares an image with the zulip app
      * @param intent passed to the activity with action SEND
