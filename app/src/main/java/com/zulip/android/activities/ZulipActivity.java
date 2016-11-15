@@ -624,8 +624,7 @@ public class ZulipActivity extends BaseActivity implements
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
-        File storageDir =  Environment
-                .getExternalStoragePublicDirectory((Environment.DIRECTORY_PICTURES));
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         File image = File.createTempFile(
                 imageFileName,  /* prefix */
                 ".jpg",         /* suffix */
@@ -637,18 +636,8 @@ public class ZulipActivity extends BaseActivity implements
         return image;
     }
 
-    /**
-     * This function adds the captures photo to the Android gallery
-     */
-    private void galleryAddPic() {
-        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        File f = new File(mCurrentPhotoPath);
-        Uri contentUri = Uri.fromFile(f);
-        mediaScanIntent.setData(contentUri);
-        this.sendBroadcast(mediaScanIntent);
-    }
 
-    /*private void setPic() {
+    private void setPic() {
         // Get the dimensions of the View
         int targetW = mImageView.getWidth();
         int targetH = mImageView.getHeight();
@@ -671,7 +660,7 @@ public class ZulipActivity extends BaseActivity implements
         Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
         mImageView.setImageBitmap(bitmap);
     }
-    */
+
     /**
      * Function invoked when a user shares an image with the zulip app
      * @param intent passed to the activity with action SEND
