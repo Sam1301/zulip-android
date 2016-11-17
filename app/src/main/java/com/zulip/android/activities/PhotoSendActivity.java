@@ -7,12 +7,16 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 
 import com.zulip.android.R;
+
+import java.io.File;
 
 public class PhotoSendActivity extends AppCompatActivity {
 
@@ -56,6 +60,22 @@ public class PhotoSendActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(sendIntent);
+            }
+        });
+
+        ImageView deleteBtn = (ImageView) findViewById(R.id.delete_photo);
+        deleteBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                File file = new File(mPhotoPath);
+                boolean isFileDeleted = file.delete();
+                if (!isFileDeleted) {
+                    // TODO: see if Zlog is to be used here?
+                    Log.e("Photo upload", "Could delete photo");
+                }
+
+                // go back to camera activity
+                NavUtils.navigateUpFromSameTask(PhotoSendActivity.this);
             }
         });
     }
