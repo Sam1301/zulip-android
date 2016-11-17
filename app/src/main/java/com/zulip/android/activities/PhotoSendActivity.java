@@ -7,7 +7,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.NavUtils;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -44,7 +43,7 @@ public class PhotoSendActivity extends AppCompatActivity {
 //            getWindow().setStatusBarColor(Color.TRANSPARENT);
 //        }
 
-        Intent intent = getIntent();
+        final Intent intent = getIntent();
         mPhotoPath = intent.getStringExtra(Intent.EXTRA_TEXT);
 
         // remove "file:" from file path
@@ -53,12 +52,14 @@ public class PhotoSendActivity extends AppCompatActivity {
 
         ImageView sendPhoto = (ImageView) findViewById(R.id.send_photo);
 
-        // go back to ZulipActivity when user presses send button
+        // intent to go back to ZulipActivity
         final Intent sendIntent = new Intent(this, ZulipActivity.class);
-        sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+        sendIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
         sendPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
                 startActivity(sendIntent);
             }
         });
@@ -74,8 +75,11 @@ public class PhotoSendActivity extends AppCompatActivity {
                     Log.e("Photo upload", "Could delete photo");
                 }
 
-                // go back to camera activity
-                NavUtils.navigateUpFromSameTask(PhotoSendActivity.this);
+                // TODO: go back to camera activity
+
+                startActivity(sendIntent);
+//                NavUtils.navigateUpFromSameTask(PhotoSendActivity.this);
+
             }
         });
     }
