@@ -576,6 +576,21 @@ public class ZulipActivity extends BaseActivity implements
                 handleSentImage(intent);
             }
         }
+
+        // upload captured image
+        String filePath = intent.getStringExtra(Intent.EXTRA_TEXT);
+
+        // Update UI to indicate image is being loaded
+        // hide fab and display chatbox
+        displayFAB(false);
+        displayChatBox(true);
+        String loadingMsg = getResources().getString(R.string.uploading_message);
+        sendingMessage(true, loadingMsg);
+
+        if (!TextUtils.isEmpty(filePath)) {
+            File photoFile = new File(filePath);
+            uploadFile(photoFile);
+        }
     }
 
     @Override

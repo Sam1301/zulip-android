@@ -29,6 +29,7 @@ public class PhotoSendActivity extends AppCompatActivity {
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
 
+        // TODO: make content appear behind status bar
 //        // make application's content appear behind the status bar
 //        getWindow().getDecorView().setSystemUiVisibility(
 //                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -45,6 +46,18 @@ public class PhotoSendActivity extends AppCompatActivity {
         // remove "file:" from file path
         mPhotoPath = mPhotoPath.replace("file:", "");
         mImageView = (ImageView) findViewById(R.id.photoImageView);
+
+        ImageView sendPhoto = (ImageView) findViewById(R.id.send_photo);
+
+        // go back to ZulipActivity when user presses send button
+        final Intent sendIntent = new Intent(this, ZulipActivity.class);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+        sendPhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(sendIntent);
+            }
+        });
     }
 
 
