@@ -635,6 +635,7 @@ public class ZulipActivity extends BaseActivity implements
                 storageDir      /* directory */
         );
 
+        // TODO: Remove file if I don't use ACTION_VIEW intent, then make necessary changes in photosend activity too
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = "file:" + image.getAbsolutePath();
         return image;
