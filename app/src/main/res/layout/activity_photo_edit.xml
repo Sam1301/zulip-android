@@ -11,7 +11,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="fitCenter"/>
-
+    <!-- Image Cropper fill the remaining available height -->
+    <com.theartofdev.edmodo.cropper.CropImageView
+        android:id="@+id/crop_image_view"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
     <ImageView
         android:id="@+id/back_btn"
         android:layout_width="wrap_content"

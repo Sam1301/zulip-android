@@ -111,7 +111,9 @@
             </intent-filter>
         </activity>
         <activity android:name=".activities.PhotoSendActivity" />
-        <activity android:name=".activities.PhotoEditActivity"></activity>
+        <activity android:name=".activities.PhotoEditActivity"/>
+        <activity android:name="com.theartofdev.edmodo.cropper.CropImageActivity"
+            android:theme="@style/Base.Theme.AppCompat"/> <!-- optional (needed if default theme has no action bar) -->
     </application>
 
 </manifest>

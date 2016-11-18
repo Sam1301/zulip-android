@@ -2,6 +2,8 @@ package com.zulip.android.activities;
 
 import android.app.ActionBar;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -9,13 +11,21 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 
+import com.theartofdev.edmodo.cropper.CropImageView;
 import com.zulip.android.R;
 import com.zulip.android.util.PhotoHelper;
+import com.zulip.android.util.ZLog;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class PhotoEditActivity extends AppCompatActivity {
 
     private String mPhotoPath;
     private ImageView mImageView;
+    private CropImageView mCropImageView;
+    private boolean isCropFinished;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,12 +60,65 @@ public class PhotoEditActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 // pass edited photo file path
+                saveBitmapAsFile();
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
                 startActivity(sendIntent);
             }
         });
 
         mImageView = (ImageView) findViewById(R.id.photoImageView);
+        mCropImageView = (CropImageView) findViewById(R.id.crop_image_view);
+        
+        ImageView backBtn = (ImageView) findViewById(R.id.back_btn);
+        backBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PhotoEditActivity.super.onBackPressed();
+            }
+        });
+
+        ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
+        cropBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!isCropFinished) {
+                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                    mCropImageView.setImageBitmap(bitmap);
+                    mCropImageView.setVisibility(View.VISIBLE);
+                    isCropFinished = true;
+                } else {
+                    Bitmap croppedImage = mCropImageView.getCroppedImage();
+                    mCropImageView.setVisibility(View.GONE);
+                    mImageView.setImageBitmap(croppedImage);
+                    isCropFinished = false;
+                }
+            }
+        });
+    }
+
+    private void saveBitmapAsFile() {
+        // delete old bitmap
+        File file = new File(mPhotoPath);
+        file.delete();
+
+        // store new bitmap at mPhotoPath
+        FileOutputStream out = null;
+        Bitmap bmp = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+        try {
+            out = new FileOutputStream(mPhotoPath);
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+            // PNG is a lossless format, the compression factor (100) is ignored
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e) {
+                ZLog.logException(e);
+            }
+        }
     }
 
     public void onWindowFocusChanged(boolean hasFocus) {
