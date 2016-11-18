@@ -13,6 +13,7 @@ import android.widget.ImageView;
 
 import com.theartofdev.edmodo.cropper.CropImageView;
 import com.zulip.android.R;
+import com.zulip.android.util.DrawCustomView;
 import com.zulip.android.util.PhotoHelper;
 import com.zulip.android.util.ZLog;
 
@@ -26,6 +27,9 @@ public class PhotoEditActivity extends AppCompatActivity {
     private ImageView mImageView;
     private CropImageView mCropImageView;
     private boolean isCropFinished;
+    private boolean isMarkingFinished;
+
+    private DrawCustomView mDrawCustomView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +95,25 @@ public class PhotoEditActivity extends AppCompatActivity {
                     mCropImageView.setVisibility(View.GONE);
                     mImageView.setImageBitmap(croppedImage);
                     isCropFinished = false;
+                }
+            }
+        });
+
+        mDrawCustomView = (DrawCustomView)findViewById(R.id.draw_custom_view);
+
+        ImageView markerBtn = (ImageView) findViewById(R.id.marker_btn);
+        markerBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!isMarkingFinished) {
+                    mDrawCustomView.setVisibility(View.VISIBLE);
+                    isMarkingFinished = true;
+                } else {
+                    mDrawCustomView.invalidate();
+                    Bitmap bitmap = mDrawCustomView.getCanvasBitmap();
+                    mImageView.setImageBitmap(bitmap);
+                    mDrawCustomView.setVisibility(View.GONE);
+                    isMarkingFinished = false;
                 }
             }
         });

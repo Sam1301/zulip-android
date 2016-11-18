@@ -17,6 +17,11 @@
         android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+    <com.zulip.android.util.DrawCustomView
+        android:id="@+id/draw_custom_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"/>
     <ImageView
         android:id="@+id/back_btn"
         android:layout_width="wrap_content"
@@ -25,7 +30,7 @@
         android:layout_marginTop="16dp"
         android:layout_marginLeft="16dp"/>
     <ImageView
-        android:id="@+id/edit_btn"
+        android:id="@+id/marker_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_edit_white_24dp"
@@ -37,7 +42,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_crop_white_24dp"
-        android:layout_toLeftOf="@id/edit_btn"
+        android:layout_toLeftOf="@id/marker_btn"
         android:layout_marginRight="32dp"
         android:layout_marginTop="16dp"/>
     <ImageView
