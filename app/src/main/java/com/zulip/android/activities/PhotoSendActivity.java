@@ -2,6 +2,8 @@ package com.zulip.android.activities;
 
 import android.app.ActionBar;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -10,6 +12,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 
+import com.theartofdev.edmodo.cropper.CropImageView;
 import com.zulip.android.R;
 import com.zulip.android.util.PhotoHelper;
 
@@ -19,6 +22,9 @@ public class PhotoSendActivity extends AppCompatActivity {
 
     private ImageView mImageView;
     private String mPhotoPath;
+    private CropImageView mCropImageView;
+    private boolean isCropFinished;
+    private boolean isCropped;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,16 +36,7 @@ public class PhotoSendActivity extends AppCompatActivity {
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
 
-        // TODO: make content appear behind status bar
-//        // make application's content appear behind the status bar
-//        getWindow().getDecorView().setSystemUiVisibility(
-//                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-//                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         setContentView(R.layout.activity_photo_send);
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//            getWindow().setStatusBarColor(Color.TRANSPARENT);
-//        }
 
         // TODO: move var declarations to top
         final Intent intent = getIntent();
@@ -59,6 +56,8 @@ public class PhotoSendActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+                // TODO: declare public tag for intent
+
                 startActivity(sendIntent);
             }
         });
@@ -77,8 +76,6 @@ public class PhotoSendActivity extends AppCompatActivity {
                 // TODO: go back to camera activity
 
                 startActivity(sendIntent);
-//                NavUtils.navigateUpFromSameTask(PhotoSendActivity.this);
-
             }
         });
 
@@ -86,11 +83,38 @@ public class PhotoSendActivity extends AppCompatActivity {
         editPhotoBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (isCropped) {
+                    PhotoHelper.saveBitmapAsFile(mPhotoPath, mImageView);
+                }
+
                 Intent intent = new Intent(PhotoSendActivity.this, PhotoEditActivity.class);
                 intent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+                intent.putExtra("myBoolean", isCropped);
                 startActivity(intent);
             }
         });
+
+        mCropImageView = (CropImageView) findViewById(R.id.crop_image_view);
+
+        ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
+        cropBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!isCropFinished) {
+                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                    mCropImageView.setImageBitmap(bitmap);
+                    mCropImageView.setVisibility(View.VISIBLE);
+                    isCropFinished = true;
+                    isCropped = true;
+                } else {
+                    Bitmap croppedImage = mCropImageView.getCroppedImage();
+                    mCropImageView.setVisibility(View.GONE);
+                    mImageView.setImageBitmap(croppedImage);
+                    isCropFinished = false;
+                }
+            }
+        });
+
     }
 
 
@@ -111,7 +135,11 @@ public class PhotoSendActivity extends AppCompatActivity {
             actionBar.hide();
         }
 
-        PhotoHelper.setPic(mImageView, mPhotoPath);
+        if (!isCropped) {
+            PhotoHelper.setPicWithRotation(mImageView, mPhotoPath);
+        } else {
+            PhotoHelper.setPicWithoutRotation(mImageView, mPhotoPath);
+        }
     }
 
 }

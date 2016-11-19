@@ -3,6 +3,8 @@ package com.zulip.android.activities;
 import android.app.ActionBar;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -10,26 +12,19 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
-import com.theartofdev.edmodo.cropper.CropImageView;
 import com.zulip.android.R;
 import com.zulip.android.util.DrawCustomView;
 import com.zulip.android.util.PhotoHelper;
-import com.zulip.android.util.ZLog;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 public class PhotoEditActivity extends AppCompatActivity {
 
     private String mPhotoPath;
     private ImageView mImageView;
-    private CropImageView mCropImageView;
-    private boolean isCropFinished;
     private boolean isMarkingFinished;
-
     private DrawCustomView mDrawCustomView;
+    private boolean mIsCropped;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +41,11 @@ public class PhotoEditActivity extends AppCompatActivity {
 //        getWindow().getDecorView().setSystemUiVisibility(
 //                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
 //                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+//        getWindow().setStatusBarColor(Color.TRANSPARENT);
         setContentView(R.layout.activity_photo_edit);
 //
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -54,6 +54,7 @@ public class PhotoEditActivity extends AppCompatActivity {
         // TODO: move var declarations to top
         final Intent intent = getIntent();
         mPhotoPath = intent.getStringExtra(Intent.EXTRA_TEXT);
+        mIsCropped = intent.getExtras().getBoolean("myBoolean");
 
         ImageView sendPhoto = (ImageView) findViewById(R.id.send_photo);
 
@@ -64,15 +65,14 @@ public class PhotoEditActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 // pass edited photo file path
-                saveBitmapAsFile();
+                PhotoHelper.saveBitmapAsFile(mPhotoPath, mImageView);
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
                 startActivity(sendIntent);
             }
         });
 
         mImageView = (ImageView) findViewById(R.id.photoImageView);
-        mCropImageView = (CropImageView) findViewById(R.id.crop_image_view);
-        
+
         ImageView backBtn = (ImageView) findViewById(R.id.back_btn);
         backBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -81,37 +81,36 @@ public class PhotoEditActivity extends AppCompatActivity {
             }
         });
 
-        ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
-        cropBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (!isCropFinished) {
-                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
-                    mCropImageView.setImageBitmap(bitmap);
-                    mCropImageView.setVisibility(View.VISIBLE);
-                    isCropFinished = true;
-                } else {
-                    Bitmap croppedImage = mCropImageView.getCroppedImage();
-                    mCropImageView.setVisibility(View.GONE);
-                    mImageView.setImageBitmap(croppedImage);
-                    isCropFinished = false;
-                }
-            }
-        });
+
 
         mDrawCustomView = (DrawCustomView)findViewById(R.id.draw_custom_view);
-
         ImageView markerBtn = (ImageView) findViewById(R.id.marker_btn);
         markerBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if (!isMarkingFinished) {
+                    int[] imageDimensions = PhotoHelper.getBitmapPositionInsideImageView(mImageView);
+//                    mDrawCustomView.setWidthHeightBitmap(imageDimensions[2], imageDimensions[3]);
+
+//                    mDrawCustomView.getLayoutParams().width = imageDimensions[2];
+//                    mDrawCustomView.getLayoutParams().height = imageDimensions[3];
+                    RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                            imageDimensions[2],
+                            imageDimensions[3]
+                    );
+                    params.setMargins(imageDimensions[0], imageDimensions[1], 0, 0);
+                    mDrawCustomView.setLayoutParams(params);
+//                    mDrawCustomView.requestLayout();
+
                     mDrawCustomView.setVisibility(View.VISIBLE);
                     isMarkingFinished = true;
                 } else {
                     mDrawCustomView.invalidate();
-                    Bitmap bitmap = mDrawCustomView.getCanvasBitmap();
-                    mImageView.setImageBitmap(bitmap);
+                    Bitmap drawingBitmap = mDrawCustomView.getCanvasBitmap();
+                    Bitmap imageViewBitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+
+                    overlay(imageViewBitmap, drawingBitmap);
+
                     mDrawCustomView.setVisibility(View.GONE);
                     isMarkingFinished = false;
                 }
@@ -119,30 +118,6 @@ public class PhotoEditActivity extends AppCompatActivity {
         });
     }
 
-    private void saveBitmapAsFile() {
-        // delete old bitmap
-        File file = new File(mPhotoPath);
-        file.delete();
-
-        // store new bitmap at mPhotoPath
-        FileOutputStream out = null;
-        Bitmap bmp = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
-        try {
-            out = new FileOutputStream(mPhotoPath);
-            bmp.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
-            // PNG is a lossless format, the compression factor (100) is ignored
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                ZLog.logException(e);
-            }
-        }
-    }
 
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -160,7 +135,18 @@ public class PhotoEditActivity extends AppCompatActivity {
         if (actionBar != null) {
             actionBar.hide();
         }
+        if (!mIsCropped) {
+            PhotoHelper.setPicWithRotation(mImageView, mPhotoPath);
+        } else {
+            PhotoHelper.setPicWithoutRotation(mImageView, mPhotoPath);
+        }
+    }
 
-        PhotoHelper.setPic(mImageView, mPhotoPath);
+    private Bitmap overlay(Bitmap bmp1, Bitmap bmp2) {
+        Bitmap overlayBitmap = Bitmap.createScaledBitmap(bmp2, bmp1.getWidth(), bmp1.getHeight(), false);
+        Canvas canvas = new Canvas(bmp1);
+        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        canvas.drawBitmap(overlayBitmap, 0, 0, paint);
+        return bmp1;
     }
 }

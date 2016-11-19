@@ -66,7 +66,6 @@ public class DrawCustomView extends View {
         drawPaint.setStrokeCap(Paint.Cap.ROUND);
 
         canvasPaint = new Paint(Paint.DITHER_FLAG);
-
     }
 
     @Override
@@ -136,14 +135,6 @@ public class DrawCustomView extends View {
         paths.add(drawPath);
         drawPath = new Path();
 
-    }
-
-    public void onClickUndo () {
-        if (paths.size()>0)
-        {
-            paths.remove(paths.size()-1);
-            invalidate();
-        }
     }
 
     public Bitmap getCanvasBitmap() {

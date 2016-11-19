@@ -11,6 +11,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:scaleType="fitCenter"/>
+    <com.theartofdev.edmodo.cropper.CropImageView
+        android:id="@+id/crop_image_view"
+        android:visibility="gone"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
     <ImageView
         android:id="@+id/delete_photo"
         android:layout_width="wrap_content"
@@ -20,7 +26,14 @@
         android:layout_marginLeft="16dp"
         android:scaleType="center"
         android:layout_marginBottom="16dp" />
-
+    <ImageView
+        android:id="@+id/crop_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_crop_white_24dp"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="16dp"/>
 
     <!-- TODO: Decide a color-->
     <LinearLayout

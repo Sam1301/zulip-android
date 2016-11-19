@@ -3,9 +3,13 @@ package com.zulip.android.util;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
-import com.theartofdev.edmodo.cropper.CropImageView;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * This class contains helpers functions for photo uploads used by
@@ -20,7 +24,7 @@ public class PhotoHelper {
      * @param imageView on which the bitmap formed is set
      * @param photoPath file path of captured image
      */
-    public static void setPic(ImageView imageView, String photoPath) {
+    public static void setPicWithRotation(ImageView imageView, String photoPath) {
         // Get the dimensions of the View
         int targetW = imageView.getWidth();
         int targetH = imageView.getHeight();
@@ -55,7 +59,7 @@ public class PhotoHelper {
         imageView.setImageBitmap(rotatedBitmap);
     }
 
-    public static void setPic(CropImageView imageView, String photoPath) {
+    public static void setPicWithoutRotation(ImageView imageView, String photoPath) {
         // Get the dimensions of the View
         int targetW = imageView.getWidth();
         int targetH = imageView.getHeight();
@@ -78,15 +82,79 @@ public class PhotoHelper {
         Bitmap bitmap = BitmapFactory.decodeFile(photoPath, bmOptions);
         imageView.setImageBitmap(bitmap);
 
-        // rotate bitmap by 90 degrees
-        Matrix matrix = new Matrix();
-        matrix.postRotate(90);
-        Bitmap rotatedBitmap = null;
-        if (bitmap != null) {
-            rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
-                    bitmap.getHeight(), matrix, true);
-        }
-
-        imageView.setImageBitmap(rotatedBitmap);
+        imageView.setImageBitmap(bitmap);
     }
+
+    /**
+     * From http://stackoverflow.com/a/26930938/5334314
+     * Returns the bitmap position inside an imageView.
+     * @param imageView source ImageView
+     * @return 0: left, 1: top, 2: width, 3: height
+     */
+    public static int[] getBitmapPositionInsideImageView(ImageView imageView) {
+        int[] ret = new int[4];
+
+        if (imageView == null || imageView.getDrawable() == null)
+            return ret;
+
+        // Get image dimensions
+        // Get image matrix values and place them in an array
+        float[] f = new float[9];
+        imageView.getImageMatrix().getValues(f);
+
+        // Extract the scale values using the constants (if aspect ratio maintained, scaleX == scaleY)
+        final float scaleX = f[Matrix.MSCALE_X];
+        final float scaleY = f[Matrix.MSCALE_Y];
+
+        // Get the drawable (could also get the bitmap behind the drawable and getWidth/getHeight)
+        final Drawable d = imageView.getDrawable();
+        final int origW = d.getIntrinsicWidth();
+        final int origH = d.getIntrinsicHeight();
+
+        // Calculate the actual dimensions
+        final int actW = Math.round(origW * scaleX);
+        final int actH = Math.round(origH * scaleY);
+
+        ret[2] = actW;
+        ret[3] = actH;
+
+        // Get image position
+        // We assume that the image is centered into ImageView
+        int imgViewW = imageView.getWidth();
+        int imgViewH = imageView.getHeight();
+
+        int top = (int) (imgViewH - actH)/2;
+        int left = (int) (imgViewW - actW)/2;
+
+        ret[0] = left;
+        ret[1] = top;
+
+        return ret;
+    }
+
+    public static void saveBitmapAsFile(String photoPath, ImageView imageView) {
+        // delete old bitmap
+        File file = new File(photoPath);
+        file.delete();
+
+        // store new bitmap at mPhotoPath
+        FileOutputStream out = null;
+        Bitmap bmp = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
+        try {
+            out = new FileOutputStream(photoPath);
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+            // PNG is a lossless format, the compression factor (100) is ignored
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e) {
+                ZLog.logException(e);
+            }
+        }
+    }
+
 }
