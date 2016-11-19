@@ -4,15 +4,13 @@ import android.app.ActionBar;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
 
 import com.zulip.android.R;
 import com.zulip.android.util.DrawCustomView;
@@ -65,7 +63,10 @@ public class PhotoEditActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 // pass edited photo file path
-                PhotoHelper.saveBitmapAsFile(mPhotoPath, mImageView);
+                FrameLayout frameLayout = (FrameLayout) findViewById(R.id.frame_layout_picture);
+                frameLayout.setVisibility(View.INVISIBLE);
+                Bitmap bitmap = screenShot(frameLayout);
+                PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
                 startActivity(sendIntent);
             }
@@ -84,36 +85,38 @@ public class PhotoEditActivity extends AppCompatActivity {
 
 
         mDrawCustomView = (DrawCustomView)findViewById(R.id.draw_custom_view);
+
         ImageView markerBtn = (ImageView) findViewById(R.id.marker_btn);
         markerBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!isMarkingFinished) {
-                    int[] imageDimensions = PhotoHelper.getBitmapPositionInsideImageView(mImageView);
+//                if (!isMarkingFinished) {
 //                    mDrawCustomView.setWidthHeightBitmap(imageDimensions[2], imageDimensions[3]);
 
 //                    mDrawCustomView.getLayoutParams().width = imageDimensions[2];
 //                    mDrawCustomView.getLayoutParams().height = imageDimensions[3];
-                    RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                            imageDimensions[2],
-                            imageDimensions[3]
-                    );
-                    params.setMargins(imageDimensions[0], imageDimensions[1], 0, 0);
-                    mDrawCustomView.setLayoutParams(params);
 //                    mDrawCustomView.requestLayout();
 
                     mDrawCustomView.setVisibility(View.VISIBLE);
-                    isMarkingFinished = true;
-                } else {
-                    mDrawCustomView.invalidate();
-                    Bitmap drawingBitmap = mDrawCustomView.getCanvasBitmap();
-                    Bitmap imageViewBitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+//                    isMarkingFinished = true;
+//                } else {
+//                    mDrawCustomView.invalidate();
+//                    Bitmap drawingBitmap = mDrawCustomView.getCanvasBitmap();
+//                    Bitmap imageViewBitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+//
+//                    overlay(imageViewBitmap, drawingBitmap);
+//
+//                    mDrawCustomView.setVisibility(View.GONE);
+//                    isMarkingFinished = false;
+//                }
+            }
+        });
 
-                    overlay(imageViewBitmap, drawingBitmap);
-
-                    mDrawCustomView.setVisibility(View.GONE);
-                    isMarkingFinished = false;
-                }
+        ImageView undoBtn = (ImageView) findViewById(R.id.undo_btn);
+        undoBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mDrawCustomView.onClickUndo();
             }
         });
     }
@@ -140,13 +143,22 @@ public class PhotoEditActivity extends AppCompatActivity {
         } else {
             PhotoHelper.setPicWithoutRotation(mImageView, mPhotoPath);
         }
+
+        int[] imageDimensions = PhotoHelper.getBitmapPositionInsideImageView(mImageView);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                imageDimensions[2],
+                imageDimensions[3]
+        );
+        params.setMargins(imageDimensions[0], imageDimensions[1], 0, 0);
+        mDrawCustomView.setLayoutParams(params);
+
     }
 
-    private Bitmap overlay(Bitmap bmp1, Bitmap bmp2) {
-        Bitmap overlayBitmap = Bitmap.createScaledBitmap(bmp2, bmp1.getWidth(), bmp1.getHeight(), false);
-        Canvas canvas = new Canvas(bmp1);
-        Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-        canvas.drawBitmap(overlayBitmap, 0, 0, paint);
-        return bmp1;
+    public Bitmap screenShot(View view) {
+        Bitmap bitmap = Bitmap.createBitmap(view.getWidth(),
+                view.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        view.draw(canvas);
+        return bitmap;
     }
 }

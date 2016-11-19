@@ -84,7 +84,8 @@ public class PhotoSendActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (isCropped) {
-                    PhotoHelper.saveBitmapAsFile(mPhotoPath, mImageView);
+                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                    PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
                 }
 
                 Intent intent = new Intent(PhotoSendActivity.this, PhotoEditActivity.class);

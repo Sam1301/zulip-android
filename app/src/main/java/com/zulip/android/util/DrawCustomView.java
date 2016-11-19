@@ -137,7 +137,11 @@ public class DrawCustomView extends View {
 
     }
 
-    public Bitmap getCanvasBitmap() {
-        return canvasBitmap;
+    public void onClickUndo () {
+        if (paths.size()>0)
+        {
+            paths.remove(paths.size()-1);
+            invalidate();
+        }
     }
 }

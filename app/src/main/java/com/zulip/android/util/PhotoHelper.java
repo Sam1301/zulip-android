@@ -3,7 +3,6 @@ package com.zulip.android.util;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.widget.ImageView;
 
@@ -81,8 +80,6 @@ public class PhotoHelper {
 
         Bitmap bitmap = BitmapFactory.decodeFile(photoPath, bmOptions);
         imageView.setImageBitmap(bitmap);
-
-        imageView.setImageBitmap(bitmap);
     }
 
     /**
@@ -132,20 +129,19 @@ public class PhotoHelper {
         return ret;
     }
 
-    public static void saveBitmapAsFile(String photoPath, ImageView imageView) {
+    public static void saveBitmapAsFile(String photoPath, Bitmap bitmap) {
         // delete old bitmap
         File file = new File(photoPath);
         file.delete();
 
         // store new bitmap at mPhotoPath
         FileOutputStream out = null;
-        Bitmap bmp = ((BitmapDrawable)imageView.getDrawable()).getBitmap();
         try {
             out = new FileOutputStream(photoPath);
-            bmp.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
             // PNG is a lossless format, the compression factor (100) is ignored
         } catch (Exception e) {
-            e.printStackTrace();
+            ZLog.logException(e);
         } finally {
             try {
                 if (out != null) {
