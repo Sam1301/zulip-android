@@ -28,26 +28,75 @@
         android:id="@+id/back_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/ic_arrow_back_white_24dp"
+        android:src="@drawable/ic_clear_white_24dp"
         android:layout_marginTop="16dp"
         android:layout_marginLeft="16dp"/>
+
 
     <ImageView
         android:id="@+id/marker_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:layout_marginRight="16dp"
+        android:background="@drawable/marker_tool_circle"
         android:src="@drawable/ic_edit_white_24dp"
         android:layout_alignParentRight="true"
-        android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"/>
+        android:scaleType="center"
+        />
+
+    <LinearLayout
+        android:id="@+id/linear_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="16dp"
+        android:layout_below="@id/marker_btn"
+        android:layout_marginTop="24dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:paddingBottom="8dp"
+        android:background="@drawable/marker_palette_background">
+
+        <ImageView
+            android:id="@+id/red_marker"
+            android:tint="@color/red_marker_tool"
+            style="@style/marker_color_style"
+            android:animateLayoutChanges="true"/>
+        <ImageView
+            android:id="@+id/yellow_marker"
+            android:tint="@color/yellow_marker_tool"
+            style="@style/marker_color_style"/>
+        <ImageView
+            android:id="@+id/green_marker"
+            android:tint="@color/green_marker_tool"
+            style="@style/marker_color_style"/>
+        <ImageView
+            android:id="@+id/white_marker"
+            android:tint="@color/white_marker_tool"
+            style="@style/marker_color_style"/>
+        <ImageView
+            android:id="@+id/blue_marker"
+            android:tint="@color/blue_marker_tool"
+            style="@style/marker_color_style"
+            android:animateLayoutChanges="true"/>
+        <ImageView
+            android:id="@+id/black_marker"
+            style="@style/marker_color_style"
+            android:animateLayoutChanges="true" />
+
+    </LinearLayout>
+
     <ImageView
         android:id="@+id/undo_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_undo_white_24dp"
         android:layout_toLeftOf="@id/marker_btn"
-        android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"/>
+        android:layout_marginTop="24dp"
+        android:layout_marginRight="24dp"/>
 
 
     <ImageView

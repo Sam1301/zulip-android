@@ -4,9 +4,13 @@ import android.app.ActionBar;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -16,11 +20,12 @@ import com.zulip.android.R;
 import com.zulip.android.util.DrawCustomView;
 import com.zulip.android.util.PhotoHelper;
 
+import static com.zulip.android.R.id.black_marker;
+
 public class PhotoEditActivity extends AppCompatActivity {
 
     private String mPhotoPath;
     private ImageView mImageView;
-    private boolean isMarkingFinished;
     private DrawCustomView mDrawCustomView;
     private boolean mIsCropped;
 
@@ -35,20 +40,10 @@ public class PhotoEditActivity extends AppCompatActivity {
         }
 
         // TODO: make content appear behind status bar
-//        // make application's content appear behind the status bar
-//        getWindow().getDecorView().setSystemUiVisibility(
-//                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-//                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-//        getWindow().setStatusBarColor(Color.TRANSPARENT);
         setContentView(R.layout.activity_photo_edit);
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//            getWindow().setStatusBarColor(Color.TRANSPARENT);
-//        }
         // TODO: move var declarations to top
         final Intent intent = getIntent();
         mPhotoPath = intent.getStringExtra(Intent.EXTRA_TEXT);
@@ -82,33 +77,13 @@ public class PhotoEditActivity extends AppCompatActivity {
             }
         });
 
-
-
         mDrawCustomView = (DrawCustomView)findViewById(R.id.draw_custom_view);
 
         ImageView markerBtn = (ImageView) findViewById(R.id.marker_btn);
         markerBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                if (!isMarkingFinished) {
-//                    mDrawCustomView.setWidthHeightBitmap(imageDimensions[2], imageDimensions[3]);
-
-//                    mDrawCustomView.getLayoutParams().width = imageDimensions[2];
-//                    mDrawCustomView.getLayoutParams().height = imageDimensions[3];
-//                    mDrawCustomView.requestLayout();
-
                     mDrawCustomView.setVisibility(View.VISIBLE);
-//                    isMarkingFinished = true;
-//                } else {
-//                    mDrawCustomView.invalidate();
-//                    Bitmap drawingBitmap = mDrawCustomView.getCanvasBitmap();
-//                    Bitmap imageViewBitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
-//
-//                    overlay(imageViewBitmap, drawingBitmap);
-//
-//                    mDrawCustomView.setVisibility(View.GONE);
-//                    isMarkingFinished = false;
-//                }
             }
         });
 
@@ -119,15 +94,55 @@ public class PhotoEditActivity extends AppCompatActivity {
                 mDrawCustomView.onClickUndo();
             }
         });
+
+        // set a border and color for black marker
+        ImageView black_marker = (ImageView) findViewById(R.id.black_marker);
+        GradientDrawable blackCircle = (GradientDrawable) black_marker.getDrawable();
+        blackCircle.setColor(ContextCompat.getColor(this, R.color.black_marker_tool));
+        blackCircle.setStroke(3, Color.GRAY);
     }
 
+    public void handleMarkerColorChange(View view) {
+        int colorId = R.color.black_marker_tool;
+        switch (view.getId()) {
+            case R.id.red_marker:
+                colorId = R.color.red_marker_tool;
+                break;
+            case R.id.yellow_marker:
+                colorId = R.color.yellow_marker_tool;
+                break;
+            case R.id.green_marker:
+                colorId = R.color.green_marker_tool;
+                break;
+            case R.id.white_marker:
+                colorId = R.color.white_marker_tool;
+                break;
+            case R.id.blue_marker:
+                colorId = R.color.blue_marker_tool;
+                break;
+            case black_marker:
+                colorId = R.color.black_marker_tool;
+                break;
+            default:
+                Log.e("Marker Tool", "Invalid color");
+                break;
+        }
+        mDrawCustomView.setBrushColor(ContextCompat.getColor(this, colorId));
+        ImageView markerIcon = (ImageView) findViewById(R.id.marker_btn);
+        GradientDrawable markerBackground = (GradientDrawable) markerIcon.getBackground();
+        markerBackground.setColor(ContextCompat.getColor(this, colorId));
+        if (colorId == R.color.black_marker_tool) {
+            markerBackground.setStroke(3, Color.GRAY);
+        } else  {
+            markerBackground.setStroke(0, Color.GRAY);
+        }
+    }
 
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
 
         View decorView = getWindow().getDecorView();
         // make application's content appear behind the status bar
-//        decorView.setSystemUiVisibility(SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         // Hide the status bar on Android 4.1 and Higher
         int uiOptionsStatusBar = View.SYSTEM_UI_FLAG_FULLSCREEN;
         decorView.setSystemUiVisibility(uiOptionsStatusBar);
@@ -151,7 +166,6 @@ public class PhotoEditActivity extends AppCompatActivity {
         );
         params.setMargins(imageDimensions[0], imageDimensions[1], 0, 0);
         mDrawCustomView.setLayoutParams(params);
-
     }
 
     public Bitmap screenShot(View view) {

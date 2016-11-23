@@ -124,7 +124,6 @@ public class PhotoSendActivity extends AppCompatActivity {
 
         View decorView = getWindow().getDecorView();
         // make application's content appear behind the status bar
-//        decorView.setSystemUiVisibility(SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         // Hide the status bar on Android 4.1 and Higher
         int uiOptionsStatusBar = View.SYSTEM_UI_FLAG_FULLSCREEN;
         decorView.setSystemUiVisibility(uiOptionsStatusBar);

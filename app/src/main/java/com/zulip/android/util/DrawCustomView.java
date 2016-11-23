@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -12,6 +13,8 @@ import android.view.View;
 import com.zulip.android.R;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * TODO: Add java docs and comments and remove unnecessary variables
@@ -27,8 +30,8 @@ public class DrawCustomView extends View {
     //defines how to draw
     private Paint drawPaint;
 
-    //initial color
-    private int paintColor = 0xFF660000;
+    //brush color
+    private int paintColor;
 
     //canvas - holding pen, holds your drawings
     //and transfers them to the view
@@ -38,10 +41,12 @@ public class DrawCustomView extends View {
     private Bitmap canvasBitmap;
 
     //brush size
-    private float currentBrushSize, lastBrushSize;
+    private float currentBrushSize;
 
     // paths followed on canvas
-    private ArrayList<Path> paths = new ArrayList<Path>();
+    private ArrayList<Path> paths = new ArrayList<>();
+
+    private Map<Path, Integer> colorsMap = new HashMap<>();
 
     // from https://android.googlesource.com/platform/development/+/master/samples/ApiDemos/src/com/example/android/apis/graphics/FingerPaint.java
     private float mX, mY;
@@ -54,7 +59,7 @@ public class DrawCustomView extends View {
 
     private void init(){
         currentBrushSize = getResources().getInteger(R.integer.medium_size);
-        lastBrushSize = currentBrushSize;
+        paintColor = ContextCompat.getColor(getContext(), R.color.red_marker_tool);
 
         drawPath = new Path();
         drawPaint = new Paint();
@@ -70,9 +75,12 @@ public class DrawCustomView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        for (Path p : paths) {
+        for (Path p : paths)
+        {
+            drawPaint.setColor(colorsMap.get(p));
             canvas.drawPath(p, drawPaint);
         }
+        drawPaint.setColor(paintColor);
         canvas.drawPath(drawPath, drawPaint);
     }
 
@@ -133,15 +141,19 @@ public class DrawCustomView extends View {
         drawPath.lineTo(mX, mY);
         drawCanvas.drawPath(drawPath, drawPaint);
         paths.add(drawPath);
+        colorsMap.put(drawPath, paintColor); // store the color of mPath
         drawPath = new Path();
-
     }
 
     public void onClickUndo () {
         if (paths.size()>0)
         {
-            paths.remove(paths.size()-1);
+            Path path = paths.remove(paths.size()-1);
             invalidate();
         }
+    }
+
+    public void setBrushColor(int color) {
+        paintColor = color;
     }
 }
