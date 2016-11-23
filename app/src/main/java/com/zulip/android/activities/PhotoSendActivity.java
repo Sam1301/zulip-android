@@ -3,9 +3,11 @@ package com.zulip.android.activities;
 import android.app.ActionBar;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -57,7 +59,6 @@ public class PhotoSendActivity extends AppCompatActivity {
             public void onClick(View view) {
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
                 // TODO: declare public tag for intent
-
                 startActivity(sendIntent);
             }
         });
@@ -97,7 +98,7 @@ public class PhotoSendActivity extends AppCompatActivity {
 
         mCropImageView = (CropImageView) findViewById(R.id.crop_image_view);
 
-        ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
+        final ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
         cropBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -105,19 +106,20 @@ public class PhotoSendActivity extends AppCompatActivity {
                     Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
                     mCropImageView.setImageBitmap(bitmap);
                     mCropImageView.setVisibility(View.VISIBLE);
+                    cropBtn.setColorFilter(ContextCompat.getColor(PhotoSendActivity.this,
+                            R.color.holo_blue_dark));
                     isCropFinished = true;
                     isCropped = true;
                 } else {
                     Bitmap croppedImage = mCropImageView.getCroppedImage();
                     mCropImageView.setVisibility(View.GONE);
                     mImageView.setImageBitmap(croppedImage);
+                    cropBtn.setColorFilter(ContextCompat.getColor(PhotoSendActivity.this, Color.WHITE));
                     isCropFinished = false;
                 }
             }
         });
-
     }
-
 
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
