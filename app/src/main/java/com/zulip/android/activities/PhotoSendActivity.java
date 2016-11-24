@@ -1,11 +1,9 @@
 package com.zulip.android.activities;
 
-import android.app.ActionBar;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -26,39 +24,42 @@ public class PhotoSendActivity extends AppCompatActivity {
     private String mPhotoPath;
     private CropImageView mCropImageView;
     private boolean isCropFinished;
-    private boolean isCropped;
+    private boolean mIsCropped;
+    private String mIsCroppedKey = "photo cropped";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // If the Android version is lower than Jellybean, use this call to hide
-        // the status bar.
-        if (Build.VERSION.SDK_INT < 16) {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        }
+
+        // run activity in full screen mode
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_photo_send);
 
-        // TODO: move var declarations to top
+        // get the file path sent from ZulipActivity
         final Intent intent = getIntent();
         mPhotoPath = intent.getStringExtra(Intent.EXTRA_TEXT);
 
-        // remove "file:" from file path
-        mPhotoPath = mPhotoPath.replace("file:", "");
         mImageView = (ImageView) findViewById(R.id.photoImageView);
-
         ImageView sendPhoto = (ImageView) findViewById(R.id.send_photo);
 
-        // intent to go back to ZulipActivity
+        // intent to go back to ZulipActivity and upload photo
         final Intent sendIntent = new Intent(this, ZulipActivity.class);
         sendIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         sendPhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (mIsCropped) {
+                    // if image was cropped, delete old file
+                    // and store new bitmap on that location
+                    Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
+                    PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
+                }
+
+                // add the file path of cropped image
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
-                // TODO: declare public tag for intent
                 startActivity(sendIntent);
             }
         });
@@ -70,12 +71,9 @@ public class PhotoSendActivity extends AppCompatActivity {
                 File file = new File(mPhotoPath);
                 boolean isFileDeleted = file.delete();
                 if (!isFileDeleted) {
-                    // TODO: see if Zlog is to be used here?
-                    Log.e("Photo upload", "Could delete photo");
+                    Log.e("Photo upload", "Could not delete photo");
                 }
-
-                // TODO: go back to camera activity
-
+                // go back to ZulipActivity to start camera intent
                 startActivity(sendIntent);
             }
         });
@@ -84,14 +82,17 @@ public class PhotoSendActivity extends AppCompatActivity {
         editPhotoBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (isCropped) {
-                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                if (mIsCropped) {
+                    // if image was cropped, delete old file
+                    // and store new bitmap on that location
+                    Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
                     PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
                 }
 
+                // start PhotoEditActivity, passing it the file path for cropped photo
                 Intent intent = new Intent(PhotoSendActivity.this, PhotoEditActivity.class);
                 intent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
-                intent.putExtra("myBoolean", isCropped);
+                intent.putExtra(mIsCroppedKey, mIsCropped);
                 startActivity(intent);
             }
         });
@@ -103,18 +104,24 @@ public class PhotoSendActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (!isCropFinished) {
-                    Bitmap bitmap = ((BitmapDrawable)mImageView.getDrawable()).getBitmap();
+                    // if image is to be cropped, make CropImageView visible
+                    Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
                     mCropImageView.setImageBitmap(bitmap);
                     mCropImageView.setVisibility(View.VISIBLE);
+
+                    // tint the crop button blue during cropping
                     cropBtn.setColorFilter(ContextCompat.getColor(PhotoSendActivity.this,
                             R.color.holo_blue_dark));
                     isCropFinished = true;
-                    isCropped = true;
+                    mIsCropped = true;
                 } else {
+                    // set cropped image as source of ImageView
                     Bitmap croppedImage = mCropImageView.getCroppedImage();
                     mCropImageView.setVisibility(View.GONE);
                     mImageView.setImageBitmap(croppedImage);
-                    cropBtn.setColorFilter(ContextCompat.getColor(PhotoSendActivity.this, Color.WHITE));
+
+                    // tint the crop button white when cropping is finished
+                    cropBtn.setColorFilter(Color.WHITE);
                     isCropFinished = false;
                 }
             }
@@ -124,24 +131,12 @@ public class PhotoSendActivity extends AppCompatActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
 
-        View decorView = getWindow().getDecorView();
-        // make application's content appear behind the status bar
-        // Hide the status bar on Android 4.1 and Higher
-        int uiOptionsStatusBar = View.SYSTEM_UI_FLAG_FULLSCREEN;
-        decorView.setSystemUiVisibility(uiOptionsStatusBar);
-
-        // Remember that you should never show the action bar if the
-        // status bar is hidden, so hide that too if necessary.
-        ActionBar actionBar = getActionBar();
-        if (actionBar != null) {
-            actionBar.hide();
-        }
-
-        if (!isCropped) {
-            PhotoHelper.setPicWithRotation(mImageView, mPhotoPath);
+        // rotate bitmap if it was sent from camera intent
+        // otherwise, don't rotate
+        if (!mIsCropped) {
+            PhotoHelper.setPic(mImageView, mPhotoPath, true);
         } else {
-            PhotoHelper.setPicWithoutRotation(mImageView, mPhotoPath);
+            PhotoHelper.setPic(mImageView, mPhotoPath, false);
         }
     }
-
 }

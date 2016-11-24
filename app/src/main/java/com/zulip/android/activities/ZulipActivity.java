@@ -130,6 +130,8 @@ public class ZulipActivity extends BaseActivity implements
     //At these many letters the emoji/person hint starts to show up
     private static final int MIN_THRESOLD_EMOJI_HINT = 1;
     private static final int PERMISSION_REQUEST_READ_CONTACTS = 1;
+    private static final int REQUEST_TAKE_PHOTO = 2;
+
     private ZulipApp app;
 
     private boolean logged_in = false;
@@ -181,6 +183,7 @@ public class ZulipActivity extends BaseActivity implements
     };
     private ExpandableStreamDrawerAdapter streamsDrawerAdapter;
     private Uri mImageUri;
+    private String mCurrentPhotoPath;
 
     @Override
     public void removeChatBox(boolean animToRight) {
@@ -448,7 +451,7 @@ public class ZulipActivity extends BaseActivity implements
             }
         });
 
-        // set onClick listener on camera button to dispatch camera intent
+        // set onClick listener on camera button to dispatch camera intent when clicked
         cameraBtn.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -577,7 +580,7 @@ public class ZulipActivity extends BaseActivity implements
             }
         }
 
-        // upload captured image
+        // extract file path of edited image
         String filePath = intent.getStringExtra(Intent.EXTRA_TEXT);
 
         if (action == null) {
@@ -589,10 +592,11 @@ public class ZulipActivity extends BaseActivity implements
                 String loadingMsg = getResources().getString(R.string.uploading_message);
                 sendingMessage(true, loadingMsg);
 
+                // start upload of photo
                 File photoFile = new File(filePath);
                 uploadFile(photoFile);
             } else {
-                // photo was deleted and camera is launched again to capture new photo
+                // photo was deleted and camera is launched again to capture a new photo
                 dispatchTakePictureIntent();
             }
         }
@@ -601,9 +605,6 @@ public class ZulipActivity extends BaseActivity implements
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_TAKE_PHOTO && resultCode == RESULT_OK) {
-//            Bundle extras = data.getExtras();
-//            Bitmap imageBitmap = (Bitmap) extras.get("data");
-//            mImageView.setImageBitmap(imageBitmap);
             Log.i("photo captured", mCurrentPhotoPath);
 
             // send file path to PhotoSendActivity
@@ -613,10 +614,9 @@ public class ZulipActivity extends BaseActivity implements
         }
     }
 
-    static final int REQUEST_TAKE_PHOTO = 1;
-
     private void dispatchTakePictureIntent() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
         // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
             // Create the File where the photo should go
@@ -625,8 +625,9 @@ public class ZulipActivity extends BaseActivity implements
                 photoFile = createPhotoFile();
             } catch (IOException ex) {
                 // Error occurred while creating the File
-                Log.e("photo error", "photo file create error");
+                ZLog.logException(ex);
             }
+
             // Continue only if the File was successfully created
             if (photoFile != null) {
                 Uri photoURI = FileProvider.getUriForFile(this,
@@ -638,15 +639,13 @@ public class ZulipActivity extends BaseActivity implements
         }
     }
 
-    String mCurrentPhotoPath;
-
     /**
-     * This function creates a file for the photo captured
-     * @return new {@link File} object for photo
+     * This function creates a file for the photo to be captured
+     * @return new {@link File} object where photo will be stored
      * @throws IOException
      */
     private File createPhotoFile() throws IOException {
-        // Create an image file name
+        // Create an image file name using timestamp
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
@@ -656,9 +655,8 @@ public class ZulipActivity extends BaseActivity implements
                 storageDir      /* directory */
         );
 
-        // TODO: Remove file if I don't use ACTION_VIEW intent, then make necessary changes in photosend activity too
-        // Save a file: path for use with ACTION_VIEW intents
-        mCurrentPhotoPath = "file:" + image.getAbsolutePath();
+        // Save image path to send to PhotoSendActivity
+        mCurrentPhotoPath = image.getAbsolutePath();
         return image;
     }
 

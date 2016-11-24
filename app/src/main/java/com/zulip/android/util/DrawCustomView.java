@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TODO: Add java docs and comments and remove unnecessary variables
+ * This class defines a custom view which is used to draw on a canvas.
  */
 
 public class DrawCustomView extends View {
@@ -141,7 +141,8 @@ public class DrawCustomView extends View {
         drawPath.lineTo(mX, mY);
         drawCanvas.drawPath(drawPath, drawPaint);
         paths.add(drawPath);
-        colorsMap.put(drawPath, paintColor); // store the color of mPath
+        // store the color of mPath
+        colorsMap.put(drawPath, paintColor);
         drawPath = new Path();
     }
 
