@@ -58,7 +58,7 @@ public class DrawCustomView extends View {
     }
 
     private void init(){
-        currentBrushSize = getResources().getInteger(R.integer.medium_size);
+        currentBrushSize = getResources().getInteger(R.integer.brush_medium_size);
         paintColor = ContextCompat.getColor(getContext(), R.color.red_marker_tool);
 
         drawPath = new Path();
