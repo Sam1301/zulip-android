@@ -7,6 +7,7 @@ import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -18,8 +19,10 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.database.MergeCursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -56,6 +59,7 @@ import android.widget.FilterQueryProvider;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SimpleCursorTreeAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -85,6 +89,7 @@ import com.zulip.android.networking.AsyncGetEvents;
 import com.zulip.android.networking.AsyncSend;
 import com.zulip.android.networking.AsyncStatusUpdate;
 import com.zulip.android.networking.ZulipAsyncPushTask;
+import com.zulip.android.networking.requestBody.ProgressRequestBody;
 import com.zulip.android.networking.response.UploadResponse;
 import com.zulip.android.util.AnimationHelper;
 import com.zulip.android.util.FilePathHelper;
@@ -103,9 +108,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import okhttp3.MediaType;
 import okhttp3.MultipartBody;
-import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -115,15 +118,18 @@ import retrofit2.Response;
  * messages
  * */
 public class ZulipActivity extends BaseActivity implements
-        MessageListFragment.Listener, NarrowListener, SwipeRemoveLinearLayout.leftToRightSwipeListener {
+        MessageListFragment.Listener, NarrowListener, SwipeRemoveLinearLayout.leftToRightSwipeListener, ProgressRequestBody.UploadCallbacks {
 
+    private static final String LOG_TAG = ZulipActivity.class.getSimpleName();
     private static final String NARROW = "narrow";
     private static final String PARAMS = "params";
     //At these many letters the emoji/person hint will not show now on
     private static final int MAX_THRESOLD_EMOJI_HINT = 5;
     //At these many letters the emoji/person hint starts to show up
     private static final int MIN_THRESOLD_EMOJI_HINT = 1;
-    private static final int PERMISSION_REQUEST_READ_CONTACTS = 1;
+    private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_INTENT = 1;
+    private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_UPLOAD = 2;
+    private static final int REQUEST_IMAGE_GET = 3;
     private ZulipApp app;
 
     private boolean logged_in = false;
@@ -174,6 +180,14 @@ public class ZulipActivity extends BaseActivity implements
     };
     private ExpandableStreamDrawerAdapter streamsDrawerAdapter;
     private Uri mFileUri;
+    private ArrayList<Uri> mFileUris;
+    private LinearLayout mUploadItemContainer;
+    private View mInflatedUploadView;
+    private TextView uploadFilenameTV;
+    private ImageView uploadCancelBtn;
+    private ImageView uploadThumbnail;
+    private boolean isUploading;
+    private boolean isCancelled;
 
     @Override
     public void removeChatBox(boolean animToRight) {
@@ -306,6 +320,7 @@ public class ZulipActivity extends BaseActivity implements
         messageEt = (AutoCompleteTextView) findViewById(R.id.message_et);
         textView = (TextView) findViewById(R.id.textView);
         sendBtn = (ImageView) findViewById(R.id.send_btn);
+        mUploadItemContainer = (LinearLayout) findViewById(R.id.upload_bar_container);
         appBarLayout = (AppBarLayout) findViewById(R.id.appBarLayout);
         app.setZulipActivity(this);
         togglePrivateStreamBtn = (ImageView) findViewById(R.id.togglePrivateStream_btn);
@@ -561,6 +576,61 @@ public class ZulipActivity extends BaseActivity implements
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_IMAGE_GET && resultCode == RESULT_OK) {
+            mFileUris = new ArrayList<>();
+            Uri uploadFileUri = data.getData();
+            if (uploadFileUri != null) {
+                mFileUris.add(data.getData());
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                ClipData clipData = data.getClipData();
+                if (clipData != null) {
+                    int numberOfUploads = clipData.getItemCount();
+                    for (int i = 0; i < numberOfUploads; i++) {
+                        mFileUris.add(clipData.getItemAt(i).getUri());
+                    }
+                }
+            }
+
+            getReadExternalStoragePermission(PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_UPLOAD);
+        }
+    }
+
+    private void getReadExternalStoragePermission(int tag) {
+        if (mFileUris != null) {
+            // check if user has granted read external storage permission
+            // for Android 6.0 or higher
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                // we need to request the permission.
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                        tag);
+            } else {
+                // permission already granted
+                // start with file upload
+                switch (tag) {
+                    case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_UPLOAD:
+                        for (Uri fileUri : mFileUris) {
+                            startFileUpload(fileUri);
+                        }
+                        break;
+                    case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_INTENT:
+                        startFileUpload(mFileUri);
+                        break;
+                    default:
+                        Log.e(LOG_TAG, "No permission tag matched");
+                        break;
+                }
+            }
+        } else {
+            Toast.makeText(this, R.string.cannot_find_file, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     /**
      * Function invoked when a user shares a text with the zulip app
      * @param intent passed to the activity with action SEND
@@ -582,41 +652,35 @@ public class ZulipActivity extends BaseActivity implements
     private void handleSentFile(Intent intent) {
         mFileUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
         if (mFileUri != null) {
-            // check if user has granted read external storage permission
-            // for Android 6.0 or higher
-            if (ContextCompat.checkSelfPermission(this,
-                    Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                // we need to request the permission.
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        PERMISSION_REQUEST_READ_CONTACTS);
-            } else {
-                // permission already granted
-                // start with file upload
-                startFileUpload();
-            }
-        } else {
-            Toast.makeText(this, R.string.cannot_find_file, Toast.LENGTH_SHORT).show();
+            getReadExternalStoragePermission(PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_INTENT);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
-
+        boolean fromIntent = false;
         switch (requestCode) {
-            case PERMISSION_REQUEST_READ_CONTACTS: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission granted
-                    // start with file upload
-                    startFileUpload();
+            case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_INTENT:
+                fromIntent = true;
+            case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE_UPLOAD:
+            // If request is cancelled, the result arrays are empty.
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // permission granted
+                // start with file upload
+                if (fromIntent) {
+                    // upload from other apps
+                    startFileUpload(mFileUri);
                 } else {
-                    // permission denied
-                    Toast.makeText(this, R.string.cannot_upload_file, Toast.LENGTH_SHORT).show();
+                    // attachment uploads
+                    for (Uri fileUri : mFileUris) {
+                        startFileUpload(fileUri);
+                    }
                 }
+            } else {
+                // permission denied
+                Toast.makeText(this, R.string.cannot_upload_file, Toast.LENGTH_SHORT).show();
             }
             break;
         }
@@ -626,24 +690,24 @@ public class ZulipActivity extends BaseActivity implements
      * Helper function to update UI to indicate file is being uploaded and call
      * {@link ZulipActivity#uploadFile(File)} to upload the file.
      */
-    private void startFileUpload() {
-        // Update UI to indicate file is being loaded
+    private void startFileUpload(Uri fileUri) {
         // hide fab and display chatbox
         displayFAB(false);
         displayChatBox(true);
-        String loadingMsg = getResources().getString(R.string.uploading_message);
-        sendingMessage(true, loadingMsg);
+
+        isUploading = true;
+        invalidateOptionsMenu();
 
         File file = null;
-        if (FilePathHelper.isLegacy(mFileUri)) {
-            file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
+        if (FilePathHelper.isLegacy(fileUri)) {
+            file = FilePathHelper.getTempFileFromContentUri(this, fileUri);
         } else {
             // get actual file path
-            String filePath = FilePathHelper.getPath(this, mFileUri);
+            String filePath = FilePathHelper.getPath(this, fileUri);
             if (filePath != null) {
                 file = new File(filePath);
-            } else if ("content".equalsIgnoreCase(mFileUri.getScheme())) {
-                file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
+            } else if ("content".equalsIgnoreCase(fileUri.getScheme())) {
+                file = FilePathHelper.getTempFileFromContentUri(this, fileUri);
             }
         }
 
@@ -651,6 +715,21 @@ public class ZulipActivity extends BaseActivity implements
             Toast.makeText(this, R.string.invalid_file, Toast.LENGTH_SHORT).show();
             return;
         }
+
+        // add upload bar to chatbox
+        mInflatedUploadView = View.inflate(this, R.layout.upload_bar, mUploadItemContainer);
+        mInflatedUploadView.setVisibility(View.VISIBLE);
+        // progress bar
+        progressBar = (ProgressBar) mInflatedUploadView.findViewById(R.id.upload_progress_bar);
+        // progress string textview
+        progressTextView = (TextView) mInflatedUploadView.findViewById(R.id.upload_bar_progress_string);
+        // upload file name textview
+        uploadFilenameTV = (TextView) mInflatedUploadView.findViewById(R.id.upload_bar_name);
+        // upload cancel button
+        uploadCancelBtn = (ImageView) mInflatedUploadView.findViewById(R.id.upload_bar_cancel);
+        // upload thumbnail imageview
+        uploadThumbnail = (ImageView) mInflatedUploadView.findViewById(R.id.upload_bar_image);
+
         // upload the file asynchronously to the server
         uploadFile(file);
     }
@@ -661,20 +740,22 @@ public class ZulipActivity extends BaseActivity implements
      * @param file on local storage
      */
     private void uploadFile(File file) {
-
         // create RequestBody instance from file
-        RequestBody requestFile =
-                RequestBody.create(MediaType.parse("multipart/form-data"), file);
-
+        ProgressRequestBody requestFile = new ProgressRequestBody(file, this);
         // MultipartBody.Part is used to send also the actual file name
+        String filename = file.getName();
+        uploadFilenameTV.setText(filename);
+        String extension = filename.substring(filename.lastIndexOf('.') + 1);
+        setUploadItemThumbnail(uploadThumbnail, extension);
         MultipartBody.Part body =
-                MultipartBody.Part.createFormData("file", file.getName(), requestFile);
+                MultipartBody.Part.createFormData("file", filename, requestFile);
 
-        final String loadingMsg = getResources().getString(R.string.uploading_message);
+        // update boolean which stores information if upload was cancelled
+        isCancelled = false;
 
         // finally, execute the request
         // create upload service client
-        Call<UploadResponse> call = ((ZulipApp) getApplicationContext()).getZulipServices().upload(body);
+        final Call<UploadResponse> call = ((ZulipApp) getApplicationContext()).getZulipServices().upload(body);
         call.enqueue(new Callback<UploadResponse>() {
             @Override
             public void onResponse(Call<UploadResponse> call,
@@ -684,32 +765,126 @@ public class ZulipActivity extends BaseActivity implements
                     UploadResponse uploadResponse = response.body();
                     filePathOnServer = uploadResponse.getUri();
                     if (!filePathOnServer.equals("")) {
-                        // remove loading message from the screen
-                        sendingMessage(false, loadingMsg);
+                        isUploading = false;
+                        invalidateOptionsMenu();
+
+                        // remove upload bar from chatbox
+                        mUploadItemContainer.removeAllViews();
 
                         // print message to compose box
                         messageEt.append(" " + UrlHelper.addHost(filePathOnServer));
                     } else {
-                        // remove loading message from the screen
-                        sendingMessage(false, loadingMsg);
-                        Toast.makeText(ZulipActivity.this, R.string.failed_to_upload, Toast.LENGTH_SHORT).show();
+                        isUploading = false;
+                        invalidateOptionsMenu();
+
+                        // remove upload bar from chatbox
+                        mUploadItemContainer.removeAllViews();
                     }
                 }
                 else {
-                    // remove loading message from the screen
-                    sendingMessage(false, loadingMsg);
-                    Toast.makeText(ZulipActivity.this, R.string.failed_to_upload, Toast.LENGTH_SHORT).show();
+                    isUploading = false;
+                    invalidateOptionsMenu();
+
+                    // remove upload bar from chatbox
+                    mUploadItemContainer.removeAllViews();
                 }
 
             }
 
             @Override
             public void onFailure(Call<UploadResponse> call, Throwable t) {
-                // remove loading message from the screen
-                sendingMessage(false, loadingMsg);
-                ZLog.logException(t);
+                if (!isCancelled) {
+                    ZLog.logException(t);
+                    Toast.makeText(ZulipActivity.this, R.string.failed_to_upload, Toast.LENGTH_SHORT).show();
+                }
+
+                isUploading = false;
+                invalidateOptionsMenu();
+
+                // remove upload bar from chatbox
+                mUploadItemContainer.removeAllViews();
             }
         });
+
+        uploadCancelBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                call.cancel();
+                isCancelled = true;
+
+                // remove upload bar from chatbox
+                mInflatedUploadView.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void dispatchPickIntent() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("*/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+
+        // TODO: include non-local files too
+        intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+
+        // For Api level greater than or equal to 18, allow user to select multiple files
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+//            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+//        }
+
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(intent, REQUEST_IMAGE_GET);
+        }
+    }
+
+    ProgressBar progressBar;
+    TextView progressTextView;
+
+    @Override
+    public void onProgressUpdate(int percentage, String progress) {
+        // set current progress
+        progressBar.setProgress(percentage);
+        progressTextView.setText(progress);
+    }
+
+    @Override
+    public void onError() {
+        Log.e(LOG_TAG, "Progress Update Error");
+    }
+
+    @Override
+    public void onFinish() {
+        progressBar.setProgress(100);
+    }
+
+    /**
+     * This helper function sets background image for {@param imageView} according to
+     * {@param extension} passed.
+     * @param imageView
+     * @param extension
+     */
+    private void setUploadItemThumbnail(ImageView imageView, String extension) {
+        if (extension.equalsIgnoreCase("jpg") || extension.equalsIgnoreCase("jpeg")
+                || extension.equalsIgnoreCase("png") || extension.equalsIgnoreCase("gif")) {
+            imageView.setImageResource(R.drawable.ic_image_black_24dp);
+            imageView.setColorFilter(ContextCompat.getColor(this, R.color.dark_red));
+            GradientDrawable drawable = (GradientDrawable) imageView.getBackground();
+            drawable.setColor(Color.TRANSPARENT);
+        } else if (extension.equalsIgnoreCase("mp3") || extension.equalsIgnoreCase("ogg")) {
+            imageView.setImageResource(R.drawable.ic_headset_white_18dp);
+            imageView.setColorFilter(Color.WHITE);
+            GradientDrawable drawable = (GradientDrawable) imageView.getBackground();
+            drawable.setColor(ContextCompat.getColor(this, R.color.dark_red));
+        } else if (extension.equalsIgnoreCase("mp4")) {
+            imageView.setImageResource(R.drawable.ic_movie_black_24dp);
+            imageView.setColorFilter(ContextCompat.getColor(this, R.color.dark_red));
+            GradientDrawable drawable = (GradientDrawable) imageView.getBackground();
+            drawable.setColor(Color.TRANSPARENT);
+        } else {
+            imageView.setImageResource(R.drawable.ic_insert_drive_file_black_24dp);
+            imageView.setColorFilter(ContextCompat.getColor(this, R.color.dark_red));
+            GradientDrawable drawable = (GradientDrawable) imageView.getBackground();
+            drawable.setColor(Color.TRANSPARENT);
+        }
     }
 
     /**
@@ -1579,10 +1754,22 @@ public class ZulipActivity extends BaseActivity implements
             case R.id.legal:
                 openLegal();
                 break;
+            case R.id.upload_to_cloud:
+                dispatchPickIntent();
+                break;
             default:
                 return super.onOptionsItemSelected(item);
         }
         return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem item = menu.findItem(R.id.upload_to_cloud);
+
+        // disable upload to cloud menu item during upload
+        item.setEnabled(!isUploading);
+        return super.onPrepareOptionsMenu(menu);
     }
 
     /**

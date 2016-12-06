@@ -8,9 +8,6 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.widget.Toast;
-
-import com.zulip.android.R;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -160,7 +157,16 @@ public class FilePathHelper {
         File tempFile = null;
         try {
             is = context.getContentResolver().openInputStream(uri);
-            tempFile = File.createTempFile("imgUpload", ".jpg");
+
+            // set prefix and suffix of temp file as actual filename and extension respectively
+            String fileName = uri.getLastPathSegment();
+            final String[] split = fileName.split(":");
+            int extensionIndex = split[1].lastIndexOf('.');
+            int lastIndex = split[1].lastIndexOf('/');
+            String name = split[1].substring(lastIndex+1, extensionIndex);
+            String ext = split[1].substring(extensionIndex);
+
+            tempFile = File.createTempFile(name + "-", ext);
             tempFile.deleteOnExit();
             FileOutputStream out = new FileOutputStream(tempFile);
             try {
@@ -174,17 +180,18 @@ public class FilePathHelper {
                 try {
                     out.close();
                 } catch (IOException e) {
-                    // ignore
+                    ZLog.logException(e);
                 }
             }
         } catch (IOException e) {
+            ZLog.logException(e);
             return null;
         } finally {
             if (is != null) {
                 try {
                     is.close();
                 } catch (IOException e) {
-                    // ignored
+                    ZLog.logException(e);
                 }
             }
         }

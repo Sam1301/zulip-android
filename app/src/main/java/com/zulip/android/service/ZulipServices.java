@@ -2,8 +2,8 @@ package com.zulip.android.service;
 
 import com.zulip.android.filters.NarrowFilter;
 import com.zulip.android.networking.response.GetMessagesResponse;
-import com.zulip.android.networking.response.UploadResponse;
 import com.zulip.android.networking.response.LoginResponse;
+import com.zulip.android.networking.response.UploadResponse;
 import com.zulip.android.networking.response.UserConfigurationResponse;
 import com.zulip.android.networking.response.ZulipBackendResponse;
 import com.zulip.android.networking.response.events.GetEventResponse;
