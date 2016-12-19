@@ -144,6 +144,15 @@ public class ZulipActivity extends BaseActivity implements
     public MessageListFragment currentList;
     FloatingActionButton fab;
     private ZulipApp app;
+    Callable<Cursor> streamsGenerator = new Callable<Cursor>() {
+        @Override
+        public Cursor call() throws Exception {
+            int pointer = app.getPointer();
+            return ((AndroidDatabaseResults) app.getDao(Stream.class).queryRaw("SELECT s.id as _id,  s.name, s.color," +
+                    " count(case when m.id > " + pointer + " or m." + Message.MESSAGE_READ_FIELD + " = 0 then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
+                    + " FROM streams as s LEFT JOIN messages as m ON s.name=m.recipients group by s.name order by s.name COLLATE NOCASE").closeableIterator().getRawResults()).getRawCursor();
+        }
+    };
     private boolean logged_in = false;
     private boolean backPressedOnce = false;
     private ZulipActivity that = this; // self-ref
