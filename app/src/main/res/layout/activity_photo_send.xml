@@ -39,26 +39,15 @@
 
             <ImageView
                 android:id="@+id/edit_photo"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:layout_gravity="center"
-                android:background="@drawable/circle"
-                android:scaleType="center"
-                android:src="@drawable/ic_mode_edit_24dp"
-                android:tint="@color/photo_buttons" />
+                style="@style/photo_buttons"
+                android:src="@drawable/ic_mode_edit_24dp" />
 
 
             <ImageView
                 android:id="@+id/send_photo"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:layout_gravity="center"
                 android:layout_marginLeft="8dp"
-                android:layout_toRightOf="@id/edit_photo"
-                android:background="@drawable/circle"
-                android:scaleType="center"
-                android:src="@drawable/ic_send_24dp"
-                android:tint="@color/photo_buttons" />
+                style="@style/photo_buttons"
+                android:src="@drawable/ic_send_24dp" />
 
     </LinearLayout>
 </RelativeLayout>
