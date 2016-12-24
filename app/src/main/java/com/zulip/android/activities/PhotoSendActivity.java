@@ -16,6 +16,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.GlideBitmapDrawable;
 import com.theartofdev.edmodo.cropper.CropImageView;
 import com.zulip.android.R;
+import com.zulip.android.util.PhotoHelper;
 
 import java.io.File;
 
@@ -97,6 +98,23 @@ public class PhotoSendActivity extends AppCompatActivity {
                     cropBtn.setColorFilter(Color.WHITE);
                     mIsCropFinished = false;
                 }
+            }
+        });
+
+        ImageView sendPhoto = (ImageView) findViewById(R.id.send_photo);
+        sendPhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (mIsCropped) {
+                    // if image was cropped, delete old file
+                    // and store new bitmap on that location
+                    Bitmap bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
+                    PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
+                }
+
+                // add the file path of cropped image
+                sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+                startActivity(sendIntent);
             }
         });
     }
