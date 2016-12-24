@@ -1,7 +1,11 @@
 package com.zulip.android.activities;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -9,6 +13,8 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.GlideBitmapDrawable;
+import com.theartofdev.edmodo.cropper.CropImageView;
 import com.zulip.android.R;
 
 import java.io.File;
@@ -17,6 +23,9 @@ public class PhotoSendActivity extends AppCompatActivity {
 
     private String mPhotoPath;
     private ImageView mImageView;
+    private CropImageView mCropImageView;
+    private boolean mIsCropFinished;
+    private boolean mIsCropped;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,12 +60,53 @@ public class PhotoSendActivity extends AppCompatActivity {
                 startActivity(sendIntent);
             }
         });
+
+        mCropImageView = (CropImageView) findViewById(R.id.crop_image_view);
+
+        final ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
+        cropBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (!mIsCropFinished) {
+                    // if image is to be cropped, make CropImageView visible
+                    Bitmap bitmap;
+                    if (mIsCropped) {
+                        // if imageView stores cropped image it is of type bitmap
+                        bitmap = ((BitmapDrawable) mImageView.getDrawable()).getBitmap();
+                    } else {
+                        // else it is of type glide bitmap
+                        bitmap = ((GlideBitmapDrawable)mImageView.getDrawable().getCurrent())
+                                .getBitmap();
+                    }
+
+                    mCropImageView.setImageBitmap(bitmap);
+                    mCropImageView.setVisibility(View.VISIBLE);
+
+                    // tint the crop button blue during cropping
+                    cropBtn.setColorFilter(ContextCompat.getColor(PhotoSendActivity.this,
+                            R.color.photo_buttons));
+                    mIsCropFinished = true;
+                    mIsCropped = true;
+                } else {
+                    // set cropped image as source of ImageView
+                    Bitmap croppedImage = mCropImageView.getCroppedImage();
+                    mCropImageView.setVisibility(View.GONE);
+                    mImageView.setImageBitmap(croppedImage);
+
+                    // tint the crop button white when cropping is finished
+                    cropBtn.setColorFilter(Color.WHITE);
+                    mIsCropFinished = false;
+                }
+            }
+        });
     }
 
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
 
         // use glide to take care of high performance bitmap decoding
-        Glide.with(this).load(mPhotoPath).crossFade().into(mImageView);
+        if (!mIsCropped) {
+            Glide.with(this).load(mPhotoPath).crossFade().into(mImageView);
+        }
     }
 }
