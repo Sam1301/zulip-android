@@ -64,10 +64,10 @@
         <activity
             android:name=".activities.LoginActivity"
             android:label="@string/app_name"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden" />
         <activity
             android:name=".activities.LegalActivity"
-            android:label="@string/title_activity_legal"></activity>
+            android:label="@string/title_activity_legal" />
 
         <receiver
             android:name=".gcm.GcmBroadcastReceiver"
@@ -117,7 +117,8 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
-        <activity android:name=".activities.PhotoSendActivity"/>
+        <activity android:name=".activities.PhotoSendActivity" />
+        <activity android:name=".activities.PhotoEditActivity"></activity>
     </application>
 
 </manifest>
