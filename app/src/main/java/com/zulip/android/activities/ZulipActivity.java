@@ -550,6 +550,11 @@ public class ZulipActivity extends BaseActivity implements
                 handleSentImage(intent);
             }
         }
+
+        // if device doesn't have camera, disable camera button
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
+            cameraBtn.setEnabled(false);
+        }
     }
 
     @Override
