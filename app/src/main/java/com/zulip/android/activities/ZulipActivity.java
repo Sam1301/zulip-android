@@ -579,6 +579,11 @@ public class ZulipActivity extends BaseActivity implements
                 handleSentImage(intent);
             }
         }
+
+        if (action == null) {
+            // photo was deleted and camera is launched again to capture a new photo
+            dispatchTakePictureIntent();
+        }
     }
 
     @Override
