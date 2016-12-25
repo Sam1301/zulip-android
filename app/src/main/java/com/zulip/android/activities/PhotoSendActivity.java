@@ -27,7 +27,6 @@ public class PhotoSendActivity extends AppCompatActivity {
     private CropImageView mCropImageView;
     private boolean mIsCropFinished;
     private boolean mIsCropped;
-    private static final String IS_CROPPED_KEY = "photo cropped";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
