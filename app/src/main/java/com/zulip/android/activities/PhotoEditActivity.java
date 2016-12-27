@@ -2,6 +2,7 @@ package com.zulip.android.activities;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.drawable.GradientDrawable;
@@ -45,6 +46,7 @@ public class PhotoEditActivity extends AppCompatActivity {
         ImageView markerIcon = (ImageView) findViewById(R.id.marker_btn);
         GradientDrawable markerBackground = (GradientDrawable) markerIcon.getBackground();
         markerBackground.setColor(ContextCompat.getColor(this, colorId));
+        markerBackground.setStroke(0, Color.GRAY);
 
         // run activity in full screen mode
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -104,6 +106,25 @@ public class PhotoEditActivity extends AppCompatActivity {
                 PhotoEditActivity.super.onBackPressed();
             }
         });
+
+        // intent to go back to ZulipActivity and upload photo
+        // when send button is clicked
+        ImageView sendPhoto = (ImageView) findViewById(R.id.send_photo);
+        final Intent sendIntent = new Intent(this, ZulipActivity.class);
+        sendIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        sendPhoto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // pass edited photo file path to ZulipActivity
+                FrameLayout frameLayout = (FrameLayout) findViewById(R.id.frame_layout_picture);
+                frameLayout.setVisibility(View.INVISIBLE);
+                // take screenshot of cropped image
+                Bitmap bitmap = screenShot(frameLayout);
+                mPhotoPath = PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
+                sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+                startActivity(sendIntent);
+            }
+        });
     }
 
     /**
@@ -145,11 +166,25 @@ public class PhotoEditActivity extends AppCompatActivity {
         ImageView markerIcon = (ImageView) findViewById(R.id.marker_btn);
         GradientDrawable markerBackground = (GradientDrawable) markerIcon.getBackground();
         markerBackground.setColor(ContextCompat.getColor(this, colorId));
-        // if black color is selected, add a border to the background
+        // if black color is selected, add a border to the background of marker tool
         if (colorId == R.color.black_marker_tool) {
             markerBackground.setStroke(3, Color.GRAY);
         } else {
             markerBackground.setStroke(0, Color.GRAY);
         }
+    }
+
+    /**
+     * Function that takes a screenshot of the view passed and returns a bitmap for it.
+     *
+     * @param view {@link View}
+     * @return screenshot of the view passed
+     */
+    public Bitmap screenShot(View view) {
+        Bitmap bitmap = Bitmap.createBitmap(view.getWidth(),
+                view.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        view.draw(canvas);
+        return bitmap;
     }
 }
