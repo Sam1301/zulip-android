@@ -86,6 +86,15 @@ public class PhotoEditActivity extends AppCompatActivity {
                 .load(mPhotoPath)
                 .asBitmap()
                 .into(mGlideTarget);
+
+        // set up undo button
+        ImageView undoBtn = (ImageView) findViewById(R.id.undo_btn);
+        undoBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mDrawCustomView.onClickUndo();
+            }
+        });
     }
 
     /**
