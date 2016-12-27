@@ -29,6 +29,7 @@ public class PhotoEditActivity extends AppCompatActivity {
     private ImageView mImageView;
     private DrawCustomView mDrawCustomView;
     private SimpleTarget mGlideTarget;
+    private boolean mIsPhotoEdited;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
