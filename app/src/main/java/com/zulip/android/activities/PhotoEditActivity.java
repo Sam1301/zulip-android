@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.animation.GlideAnimation;
@@ -105,6 +106,27 @@ public class PhotoEditActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 PhotoEditActivity.super.onBackPressed();
+            }
+        });
+
+        // set up crop button
+        // intent to go back to PhotoSendActivity
+        final Intent cropIntent = new Intent(this, PhotoSendActivity.class);
+        cropIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        TextView cropBtn = (TextView) findViewById(R.id.crop_btn);
+        cropBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // pass edited photo file path to PhotoSendActivity
+                FrameLayout frameLayout = (FrameLayout) findViewById(R.id.frame_layout_picture);
+                frameLayout.setVisibility(View.INVISIBLE);
+
+                // take screenshot of cropped image
+                Bitmap bitmap = screenShot(frameLayout);
+                mPhotoPath = PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
+
+                cropIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+                startActivity(cropIntent);
             }
         });
 
