@@ -95,6 +95,15 @@ public class PhotoEditActivity extends AppCompatActivity {
                 mDrawCustomView.onClickUndo();
             }
         });
+
+        // go back when back button is pressed
+        ImageView backBtn = (ImageView) findViewById(R.id.back_btn);
+        backBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                PhotoEditActivity.super.onBackPressed();
+            }
+        });
     }
 
     /**
