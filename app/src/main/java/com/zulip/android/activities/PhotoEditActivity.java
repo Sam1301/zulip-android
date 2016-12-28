@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Point;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -24,6 +25,8 @@ import com.zulip.android.R;
 import com.zulip.android.util.DrawCustomView;
 import com.zulip.android.util.PhotoHelper;
 
+import static android.graphics.Bitmap.createBitmap;
+
 public class PhotoEditActivity extends AppCompatActivity {
 
     private String mPhotoPath;
@@ -31,6 +34,7 @@ public class PhotoEditActivity extends AppCompatActivity {
     private DrawCustomView mDrawCustomView;
     private SimpleTarget mGlideTarget;
     private boolean mIsPhotoEdited;
+    private int[] mImageDimensions;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,12 +78,12 @@ public class PhotoEditActivity extends AppCompatActivity {
                 mImageView.setImageBitmap(bitmap);
 
                 // bound the canvas for drawing to the actual dimensions of imageView
-                int[] imageDimensions = PhotoHelper.getBitmapPositionInsideImageView(mImageView);
+                mImageDimensions = PhotoHelper.getBitmapPositionInsideImageView(mImageView);
                 FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                        imageDimensions[2],
-                        imageDimensions[3]
+                        mImageDimensions[2],
+                        mImageDimensions[3]
                 );
-                params.setMargins(imageDimensions[0], imageDimensions[1], 0, 0);
+                params.setMargins(mImageDimensions[0], mImageDimensions[1], 0, 0);
                 mDrawCustomView.setLayoutParams(params);
             }
         };
@@ -109,26 +113,6 @@ public class PhotoEditActivity extends AppCompatActivity {
             }
         });
 
-        // set up crop button
-        // intent to go back to PhotoSendActivity
-        final Intent cropIntent = new Intent(this, PhotoSendActivity.class);
-        cropIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        TextView cropBtn = (TextView) findViewById(R.id.crop_btn);
-        cropBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // pass edited photo file path to PhotoSendActivity
-                FrameLayout frameLayout = (FrameLayout) findViewById(R.id.frame_layout_picture);
-                frameLayout.setVisibility(View.INVISIBLE);
-
-                // take screenshot of cropped image
-                Bitmap bitmap = screenShot(frameLayout);
-                mPhotoPath = PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
-
-                cropIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
-                startActivity(cropIntent);
-            }
-        });
 
         // intent to go back to ZulipActivity and upload photo
         // when send button is clicked
@@ -146,6 +130,27 @@ public class PhotoEditActivity extends AppCompatActivity {
                 mPhotoPath = PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
                 sendIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
                 startActivity(sendIntent);
+            }
+        });
+
+        // set up crop button
+        // intent to go back to PhotoSendActivity
+        final Intent cropIntent = new Intent(this, PhotoSendActivity.class);
+        cropIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        TextView cropBtn = (TextView) findViewById(R.id.crop_btn);
+        cropBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // pass edited photo file path to PhotoSendActivity
+                FrameLayout frameLayout = (FrameLayout) findViewById(R.id.frame_layout_picture);
+                frameLayout.setVisibility(View.INVISIBLE);
+
+                // take screenshot of cropped image
+                Bitmap bitmap = getBitmapFromView(frameLayout);
+                mPhotoPath = PhotoHelper.saveBitmapAsFile(mPhotoPath, bitmap);
+
+                cropIntent.putExtra(Intent.EXTRA_TEXT, mPhotoPath);
+                startActivity(cropIntent);
             }
         });
     }
@@ -204,10 +209,35 @@ public class PhotoEditActivity extends AppCompatActivity {
      * @return screenshot of the view passed
      */
     public Bitmap screenShot(View view) {
-        Bitmap bitmap = Bitmap.createBitmap(view.getWidth(),
+        Bitmap bitmap = createBitmap(view.getWidth(),
                 view.getHeight(), Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         view.draw(canvas);
         return bitmap;
+    }
+
+    public Bitmap getBitmapFromView(View view) {
+        // Define a bitmap with the same size as the view
+        Bitmap returnedBitmap = createBitmap(view.getWidth(), view.getHeight(),
+                Bitmap.Config.RGB_565);
+        // Bind a canvas to it
+        Canvas canvas = new Canvas(returnedBitmap);
+        // Get the view's background
+        Drawable bgDrawable = view.getBackground();
+        if (bgDrawable != null)
+            // has background drawable, then draw it on the canvas
+            bgDrawable.draw(canvas);
+        else
+            // does not have background drawable, then draw black background on
+            // the canvas
+            canvas.drawColor(Color.BLACK);
+        // draw the view on the canvas
+        view.draw(canvas);
+
+        Bitmap trimmedBitmap = Bitmap.createBitmap(returnedBitmap,
+                mImageDimensions[0], mImageDimensions[1],
+                mImageDimensions[2], mImageDimensions[3]);
+        // return the bitmap
+        return trimmedBitmap;
     }
 }

@@ -64,6 +64,7 @@ public class PhotoSendActivity extends AppCompatActivity {
         });
 
         mCropImageView = (CropImageView) findViewById(R.id.crop_image_view);
+        mCropImageView.setVisibility(View.GONE);
 
         final ImageView cropBtn = (ImageView) findViewById(R.id.crop_btn);
         cropBtn.setOnClickListener(new View.OnClickListener() {
@@ -156,7 +157,7 @@ public class PhotoSendActivity extends AppCompatActivity {
         super.onWindowFocusChanged(hasFocus);
 
         // use glide to take care of high performance bitmap decoding
-        if (!mIsCropped) {
+        if (!mIsCropped && hasFocus) {
             Glide.with(this).load(mPhotoPath).crossFade().into(mImageView);
         }
     }
