@@ -1,7 +1,5 @@
 language: android
 sudo: required
-dist: trusty
-group: edge
 jdk: oraclejdk8
 install:
     - ./setup_server.sh
