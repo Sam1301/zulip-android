@@ -25,3 +25,4 @@ if [ $(uname) = "OpenBSD"  ]; then sudo cp ./puppet/zulip/files/postgresql/zulip
 ./manage.py compilemessages
 sudo ./tools/setup/install-node
 npm install
+./tools/run-dev.py
