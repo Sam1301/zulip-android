@@ -12,7 +12,18 @@ sudo apt-add-repository -ys ppa:tabbott/zulip
 sudo apt-get update
 wget https://dl.dropboxusercontent.com/u/283158365/zuliposs/postgresql-9.1-tsearch-extras_0.1.2_amd64.deb
 sudo dpkg -i postgresql-9.1-tsearch-extras_0.1.2_amd64.deb
-tools/setup/setup_venvs.py
+sudo virtualenv /srv/zulip-venv -p python2 # Create a python2 virtualenv
+sudo chown -R `whoami`:`whoami` /srv/zulip-venv
+source /srv/zulip-venv/bin/activate # Activate python2 virtualenv
+pip install --upgrade pip # upgrade pip itself because older versions have known issues
+pip install --no-deps -r requirements/py2_dev.txt # install python packages required for development
+
+sudo virtualenv /srv/zulip-py3-venv -p python3 # Create a python3 virtualenv
+sudo chown -R `whoami`:`whoami` /srv/zulip-py3-venv
+source /srv/zulip-py3-venv/bin/activate # Activate python3 virtualenv
+pip install --upgrade pip # upgrade pip itself because older versions have known issues
+pip install --no-deps -r requirements/py3_dev.txt # install python packages required for development
+
 ./tools/install-mypy
 ./tools/setup/emoji/build_emoji
 ./scripts/setup/generate_secrets.py --development
