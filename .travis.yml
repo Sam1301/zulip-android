@@ -1,8 +1,7 @@
 language: android
 jdk: oraclejdk8
-sudo: required
 install:
-    - sudo ./tools/travis/setup_backend.sh
+    - ./setup_server.sh
 cache:
   directories:
     - $HOME/.gradle/caches/
