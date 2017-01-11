@@ -235,7 +235,10 @@ public class Message {
                     for (Message m : messages) {
                         Person person = Person.getOrUpdate(app, m.getSenderEmail(), m.getSenderFullName(), m.getAvatarUrl());
                         m.setSender(person);
-                        Stream stream = Stream.getByName(app, m.getRecipients());
+                        Stream stream = null;
+                        if (m.getType() == MessageType.STREAM_MESSAGE) {
+                            stream = Stream.getByName(app, m.getRecipients());
+                        }
                         m.setStream(stream);
                         messageDao.createOrUpdate(m);
                     }
@@ -484,7 +487,7 @@ public class Message {
             ArrayList<String> names = new ArrayList<>();
 
             for (Person person : people) {
-                if (person.id != app.getYou().id || people.length == 1) {
+                if (!person.getEmail().equals(app.getYou().getEmail()) || people.length == 1) {
                     names.add(person.getName());
                 }
             }
