@@ -89,6 +89,11 @@ public class BaseTest {
                 allOf(withId(R.id.zulip_login), withText("Log in"), isDisplayed()));
         button.perform(click());
 
+        try {
+            Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         onView(withText("Your username or password is incorrect.")).inRoot(isToast()).check(matches(isDisplayed()));
     }
 
