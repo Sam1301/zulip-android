@@ -19,6 +19,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.ObjectCache;
 import com.j256.ormlite.dao.ReferenceObjectCache;
@@ -93,6 +94,9 @@ public class ZulipApp extends Application {
     private SharedPreferences settings;
     private String api_key;
     private int max_message_id;
+    /**
+     * You'll need this in your class to cache the helper in the class.
+     */
     private DatabaseHelper databaseHelper;
     private ZulipServices zulipServices;
     private ReferenceObjectCache objectCache;
@@ -408,11 +412,17 @@ public class ZulipApp extends Application {
     }
 
     public void setEmail(String email) {
+        if (databaseHelper != null) {
+            OpenHelperManager.releaseHelper();
+        }
         databaseHelper = new DatabaseHelper(this, email);
         this.you = Person.getOrUpdate(this, email, null, null);
     }
 
     public DatabaseHelper getDatabaseHelper() {
+        if (databaseHelper == null) {
+            databaseHelper = OpenHelperManager.getHelper(this, DatabaseHelper.class);
+        }
         return databaseHelper;
     }
 
