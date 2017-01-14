@@ -113,7 +113,8 @@ public class Message {
     private int id;
     @DatabaseField(foreign = true, columnName = STREAM_FIELD, foreignAutoRefresh = true)
     private Stream stream;
-    @DatabaseField(columnName = MESSAGE_READ_FIELD)
+    @NonNull
+    @DatabaseField(columnName = MESSAGE_READ_FIELD, defaultValue = "0")
     private Boolean messageRead;
     @DatabaseField(columnDefinition = MESSAGE_EDITED)
     private Boolean hasBeenEdited;
@@ -235,6 +236,11 @@ public class Message {
                     for (Message m : messages) {
                         Person person = Person.getOrUpdate(app, m.getSenderEmail(), m.getSenderFullName(), m.getAvatarUrl());
                         m.setSender(person);
+                        Stream stream = null;
+                        if (m.type == MessageType.STREAM_MESSAGE) {
+                            stream = Stream.getByName(app, m.getRecipients());
+                        }
+                        m.setStream(stream);
                         messageDao.createOrUpdate(m);
                     }
                     return null;

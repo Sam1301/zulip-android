@@ -131,7 +131,25 @@ public class AsyncGetOldMessages extends ZulipAsyncPushTask {
 
                     if (!lowerCachedMessages.isEmpty()
                             || !upperCachedMessages.isEmpty()) {
-                        if (before > 0) {
+                        // check if we are at beginning of stream
+//                        boolean atBeginning = false;
+//                        int messageId = -1;
+//                        if (filter != null) {
+//                            messageId = Stream.getFirstMessageId(app, filter.getComposeStream());
+//                        }
+
+                        // for narrow view
+//                        if (messageId != -1 && (receivedMessages.get(0).getId() == messageId)) {
+//                            atBeginning = true;
+//                        }
+
+                        // load more messages only if we are at beginning
+                        // for home view
+                        // TODO: what is the id of first message in home view?
+//                        if (filter == null && (receivedMessages.get(0).getId() == 0)) {
+//                            atBeginning = true;
+//                        }
+                        if (before > 0 /*&&  !atBeginning*/) {
                             this.recurse(LoadPosition.ABOVE, before, rng,
                                     mainAnchor);
                         }

@@ -19,8 +19,10 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.database.MergeCursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -38,7 +40,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v4.view.animation.FastOutLinearInInterpolator;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
+import android.support.v4.view.animation.LinearOutSlowInInterpolator;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatDelegate;
@@ -50,6 +54,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.animation.Interpolator;
 import android.view.inputmethod.InputMethodManager;
@@ -68,6 +73,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.j256.ormlite.android.AndroidDatabaseResults;
+import com.transitionseverywhere.Fade;
+import com.transitionseverywhere.TransitionManager;
+import com.transitionseverywhere.TransitionSet;
+import com.transitionseverywhere.extra.Scale;
 import com.zulip.android.BuildConfig;
 import com.zulip.android.R;
 import com.zulip.android.ZulipApp;
@@ -622,9 +631,9 @@ public class ZulipActivity extends BaseActivity implements
             @Override
             public Cursor call() throws Exception {
                 int pointer = app.getPointer();
-                String query = "SELECT s.id as _id,  s.name, s.color, count(case when m.id > " + pointer + " or m." + Message.MESSAGE_READ_FIELD
-                        + " = 0 then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
-                        + " FROM streams as s LEFT JOIN messages as m ON s.id=m.stream ";
+                String query = "SELECT s.id as _id,  s.name, s.color, count(case when m.id > " + pointer + " and (m." + Message.MESSAGE_READ_FIELD
+                        + " = 0 or m." + Message.MESSAGE_READ_FIELD + " = NULL) then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
+                        + " FROM streams as s LEFT JOIN messages as m ON s.name=m.recipients ";
                 if (!etSearchStream.getText().toString().equals("") && !etSearchStream.getText().toString().isEmpty()) {
                     //append where clause
                     query += " WHERE s.name LIKE '%" + etSearchStream.getText().toString() + "%'";
@@ -1114,6 +1123,11 @@ public class ZulipActivity extends BaseActivity implements
      * Setup the streams Drawer which has a {@link ExpandableListView} categorizes the stream and subject
      */
     private void setupListViewAdapter() {
+        View group = View.inflate(this, R.layout.stream_tile_new, null);
+        final ViewGroup transitionsGroup = (ViewGroup) group.findViewById(R.id.group_container);
+        View child = View.inflate(this, R.layout.stream_tile_child, null);
+        final ViewGroup transitionsChild = (ViewGroup) child.findViewById(R.id.child_container);
+
         streamsDrawerAdapter = null;
         String[] groupFrom = {Stream.NAME_FIELD, Stream.COLOR_FIELD, ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME};
         int[] groupTo = {R.id.name, R.id.stream_dot, R.id.unread_group};
@@ -1196,22 +1210,40 @@ public class ZulipActivity extends BaseActivity implements
                     case R.id.unread_group:
                         TextView unreadGroupTextView = (TextView) view;
                         final String unreadGroupCount = cursor.getString(columnIndex);
-//                        if (unreadGroupCount.equals("0")) {
-//                            unreadGroupTextView.setVisibility(View.GONE);
-//                        } else {
-//                            unreadGroupTextView.setText(unreadGroupCount);
-//                            unreadGroupTextView.setVisibility(View.VISIBLE);
-//                        }
+                        boolean visible_group;
+                        if (unreadGroupCount.equals("0")) {
+                            visible_group = false;
+                        } else {
+                            visible_group = true;
+                            unreadGroupTextView.setText(unreadGroupCount);
+                        }
+                        TransitionSet groupSet = new TransitionSet()
+                                .addTransition(new Scale(0.7f))
+                                .addTransition(new Fade())
+                                .setInterpolator(visible_group ? new LinearOutSlowInInterpolator() :
+                                        new FastOutLinearInInterpolator());
+                        unreadGroupTextView.setVisibility(visible_group ? View.VISIBLE : View.INVISIBLE);
+                        TransitionManager.beginDelayedTransition(transitionsGroup, groupSet);
                         return true;
                     case R.id.unread_child:
                         TextView unreadChildTextView = (TextView) view;
+                        GradientDrawable markerBackground = (GradientDrawable) unreadChildTextView.getBackground();
+                        markerBackground.setColor(Color.LTGRAY);
                         final String unreadChildNumber = cursor.getString(columnIndex);
+                        boolean visible_child;
                         if (unreadChildNumber.equals("0")) {
-                            unreadChildTextView.setVisibility(View.GONE);
+                            visible_child = false;
                         } else {
                             unreadChildTextView.setText(unreadChildNumber);
-                            unreadChildTextView.setVisibility(View.VISIBLE);
+                            visible_child = true;
                         }
+                        TransitionSet childSet = new TransitionSet()
+                                .addTransition(new Scale(0.7f))
+                                .addTransition(new Fade())
+                                .setInterpolator(visible_child ? new LinearOutSlowInInterpolator() :
+                                        new FastOutLinearInInterpolator());
+                        unreadChildTextView.setVisibility(visible_child ? View.VISIBLE : View.INVISIBLE);
+                        TransitionManager.beginDelayedTransition(transitionsChild, childSet);
                         return true;
                     case R.id.name_child:
                         TextView name_child = (TextView) view;

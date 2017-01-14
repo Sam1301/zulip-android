@@ -415,7 +415,7 @@ public class RecyclerMessageAdapter extends RecyclerView.Adapter<RecyclerView.Vi
     @Override
     public void onViewAttachedToWindow(RecyclerView.ViewHolder holder) {
         super.onViewRecycled(holder);
-        if (holder.getItemViewType() == VIEWTYPE_MESSAGE && !startedFromFilter)
+        if (holder.getItemViewType() == VIEWTYPE_MESSAGE)
             markThisMessageAsRead((Message) getItem(holder.getAdapterPosition()));
     }
 
