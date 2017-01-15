@@ -617,9 +617,9 @@ public class ZulipActivity extends BaseActivity implements
             @Override
             public Cursor call() throws Exception {
                 int pointer = app.getPointer();
-                String query = "SELECT s.id as _id,  s.name, s.color, count(case when m.id > " + pointer + " or m." + Message.MESSAGE_READ_FIELD
-                        + " = 0 then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
-                        + " FROM streams as s LEFT JOIN messages as m ON s.id=m.stream ";
+                String query = "SELECT s.id as _id,  s.name, s.color, count(case when m.id > " + pointer + " and (m." + Message.MESSAGE_READ_FIELD
+                        + " = 0 or m." + Message.MESSAGE_READ_FIELD + " = NULL) then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
+                        + " FROM streams as s LEFT JOIN messages as m ON s.name=m.recipients ";
                 if (!etSearchStream.getText().toString().equals("") && !etSearchStream.getText().toString().isEmpty()) {
                     //append where clause
                     query += " WHERE s.name LIKE '%" + etSearchStream.getText().toString() + "%'";

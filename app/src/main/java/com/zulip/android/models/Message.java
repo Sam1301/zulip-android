@@ -113,7 +113,8 @@ public class Message {
     private int id;
     @DatabaseField(foreign = true, columnName = STREAM_FIELD, foreignAutoRefresh = true)
     private Stream stream;
-    @DatabaseField(columnName = MESSAGE_READ_FIELD)
+    @NonNull
+    @DatabaseField(columnName = MESSAGE_READ_FIELD, defaultValue = "0")
     private Boolean messageRead;
     @DatabaseField(columnDefinition = MESSAGE_EDITED)
     private Boolean hasBeenEdited;
