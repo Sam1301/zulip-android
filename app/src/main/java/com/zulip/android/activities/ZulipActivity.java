@@ -19,8 +19,10 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.database.MergeCursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -38,7 +40,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v4.view.animation.FastOutLinearInInterpolator;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
+import android.support.v4.view.animation.LinearOutSlowInInterpolator;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatDelegate;
@@ -50,6 +54,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.animation.Interpolator;
 import android.view.inputmethod.InputMethodManager;
@@ -68,6 +73,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.j256.ormlite.android.AndroidDatabaseResults;
+import com.transitionseverywhere.Fade;
+import com.transitionseverywhere.TransitionManager;
+import com.transitionseverywhere.TransitionSet;
+import com.transitionseverywhere.extra.Scale;
 import com.zulip.android.BuildConfig;
 import com.zulip.android.R;
 import com.zulip.android.ZulipApp;
@@ -1109,6 +1118,12 @@ public class ZulipActivity extends BaseActivity implements
      * Setup the streams Drawer which has a {@link ExpandableListView} categorizes the stream and subject
      */
     private void setupListViewAdapter() {
+        // get transition containers for unread counts transition
+        View group = View.inflate(this, R.layout.stream_tile_new, null);
+        final ViewGroup transitionsGroup = (ViewGroup) group.findViewById(R.id.group_container);
+        View child = View.inflate(this, R.layout.stream_tile_child, null);
+        final ViewGroup transitionsChild = (ViewGroup) child.findViewById(R.id.child_container);
+
         streamsDrawerAdapter = null;
         String[] groupFrom = {Stream.NAME_FIELD, Stream.COLOR_FIELD, ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME};
         int[] groupTo = {R.id.name, R.id.stream_dot, R.id.unread_group};
@@ -1191,22 +1206,47 @@ public class ZulipActivity extends BaseActivity implements
                     case R.id.unread_group:
                         TextView unreadGroupTextView = (TextView) view;
                         final String unreadGroupCount = cursor.getString(columnIndex);
+                        boolean visible_group;
                         if (unreadGroupCount.equals("0")) {
-                            unreadGroupTextView.setVisibility(View.GONE);
+                            visible_group = false;
                         } else {
+                            visible_group = true;
                             unreadGroupTextView.setText(unreadGroupCount);
-                            unreadGroupTextView.setVisibility(View.VISIBLE);
                         }
+
+                        // animate unread group count to fade in when visible and fade out when invisible
+                        TransitionSet groupSet = new TransitionSet()
+                                .addTransition(new Scale(0.7f))
+                                .addTransition(new Fade())
+                                .setInterpolator(visible_group ? new LinearOutSlowInInterpolator() :
+                                        new FastOutLinearInInterpolator());
+                        unreadGroupTextView.setVisibility(visible_group ? View.VISIBLE : View.INVISIBLE);
+                        TransitionManager.beginDelayedTransition(transitionsGroup, groupSet);
                         return true;
                     case R.id.unread_child:
                         TextView unreadChildTextView = (TextView) view;
+
+                        // change background drawable color of child unread count to faint gray
+                        GradientDrawable background = (GradientDrawable) unreadChildTextView
+                                .getBackground();
+                        background.setColor(Color.LTGRAY);
                         final String unreadChildNumber = cursor.getString(columnIndex);
+                        boolean visible_child;
                         if (unreadChildNumber.equals("0")) {
-                            unreadChildTextView.setVisibility(View.GONE);
+                            visible_child = false;
                         } else {
                             unreadChildTextView.setText(unreadChildNumber);
-                            unreadChildTextView.setVisibility(View.VISIBLE);
+                            visible_child = true;
                         }
+
+                        // animate unread group count to fade in when visible and fade out when invisible
+                        TransitionSet childSet = new TransitionSet()
+                                .addTransition(new Scale(0.7f))
+                                .addTransition(new Fade())
+                                .setInterpolator(visible_child ? new LinearOutSlowInInterpolator() :
+                                        new FastOutLinearInInterpolator());
+                        unreadChildTextView.setVisibility(visible_child ? View.VISIBLE : View.INVISIBLE);
+                        TransitionManager.beginDelayedTransition(transitionsChild, childSet);
                         return true;
                     case R.id.name_child:
                         TextView name_child = (TextView) view;
