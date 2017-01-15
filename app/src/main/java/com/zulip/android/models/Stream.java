@@ -32,7 +32,7 @@ public class Stream {
     private static final String INHOMEVIEW_FIELD = "inHomeView";
     private static final String INVITEONLY_FIELD = "inviteOnly";
     @SerializedName("stream_id")
-    @DatabaseField(columnName = ID_FIELD, id = true)
+    @DatabaseField(columnName = ID_FIELD, generatedId = true)
     private int id;
 
     @SerializedName("description")
@@ -120,9 +120,8 @@ public class Stream {
             if (stream == null) {
                 Log.w("Stream.getByName",
                         "We received a stream message for a stream we don't have data for. Fake it until you make it.");
-                stream = new Stream(name);
-                app.getDao(Stream.class).createIfNotExists(stream);
-            }
+                // catch the new stream object with auto-generated id
+                stream = app.getDao(Stream.class).createIfNotExists(new Stream(name));            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
