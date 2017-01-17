@@ -310,6 +310,35 @@ public class ZulipActivity extends BaseActivity implements
             topSnackBar.dismiss();
         }
 
+        // update unread counts in the toolbar when recyclerview is scrolled
+        int unreadCounts = 0;
+        try {
+            if (narrowedList == null) {
+                unreadCounts = getUnreadCountsForNarrow(null);
+            } else {
+                unreadCounts = getUnreadCountsForNarrow(narrowedList.filter);
+            }
+        } catch (SQLException e) {
+            ZLog.logException(e);
+        }
+
+        // home view
+        if (narrowedList == null) {
+            if (unreadCounts != 0) {
+                setupTitleBar(getString(R.string.app_name) + " (" + unreadCounts + ")", null);
+            } else {
+                setupTitleBar(getString(R.string.app_name), null);
+            }
+        }
+
+        // narrowed view
+        else {
+            if (unreadCounts != 0) {
+                setupTitleBar(narrowedList.filter.getTitle() + " (" + unreadCounts + ")", narrowedList.filter.getSubtitle());
+            } else {
+                setupTitleBar(narrowedList.filter.getTitle(), narrowedList.filter.getSubtitle());
+            }
+        }
     }
 
     public RefreshableCursorAdapter getPeopleAdapter() {
@@ -1284,6 +1313,13 @@ public class ZulipActivity extends BaseActivity implements
                             unreadGroupTextView.setText(unreadGroupCount);
                         }
 
+                        // set appropriete size for background drawable
+                        GradientDrawable backgroundGroup = (GradientDrawable) unreadGroupTextView
+                                .getBackground();
+                        backgroundGroup.mutate();
+                        int groupSize = findBubbleSize(Integer.parseInt(unreadGroupCount));
+                        backgroundGroup.setSize(groupSize, groupSize);
+
                         // animate unread group count to fade in when visible and fade out when invisible
                         TransitionSet groupSet = new TransitionSet()
                                 .addTransition(new Scale(0.7f))
@@ -1297,9 +1333,10 @@ public class ZulipActivity extends BaseActivity implements
                         TextView unreadChildTextView = (TextView) view;
 
                         // change background drawable color of child unread count to faint gray
-                        GradientDrawable background = (GradientDrawable) unreadChildTextView
+                        GradientDrawable backgroundChild = (GradientDrawable) unreadChildTextView
                                 .getBackground();
-                        background.setColor(Color.LTGRAY);
+                        backgroundChild.mutate();
+                        backgroundChild.setColor(Color.LTGRAY);
                         final String unreadChildNumber = cursor.getString(columnIndex);
                         boolean visible_child;
                         if (unreadChildNumber.equals("0")) {
@@ -1308,6 +1345,10 @@ public class ZulipActivity extends BaseActivity implements
                             unreadChildTextView.setText(unreadChildNumber);
                             visible_child = true;
                         }
+
+                        // set appropriete size for background of drawable
+                        int childSize = findBubbleSize(Integer.parseInt(unreadChildNumber));
+                        backgroundChild.setSize(childSize, childSize);
 
                         // animate unread group count to fade in when visible and fade out when invisible
                         TransitionSet childSet = new TransitionSet()
@@ -1330,6 +1371,20 @@ public class ZulipActivity extends BaseActivity implements
             }
         });
         streamsDrawer.setAdapter(streamsDrawerAdapter);
+    }
+
+    private int findBubbleSize(int counts) {
+        int size;
+        if (counts / 10 == 0) {
+            size = (int) getResources().getDimension(R.dimen.small_bubble);
+        } else if (counts / 100 == 0) {
+            size = (int) getResources().getDimension(R.dimen.medium_bubble);
+        } else if (counts / 1000 == 0){
+            size = (int) getResources().getDimension(R.dimen.large_bubble);
+        } else {
+            size = (int) getResources().getDimension(R.dimen.extra_large_bubble);
+        }
+        return size;
     }
 
     /**
@@ -1853,15 +1908,66 @@ public class ZulipActivity extends BaseActivity implements
         currentList = list;
 
         NarrowFilter filter = list.filter;
+
+        // get unread counts for this filter
+        int unreadCounts = 0;
+        try {
+            unreadCounts = getUnreadCountsForNarrow(filter);
+        } catch (SQLException e) {
+            ZLog.logException(e);
+        }
         if (filter == null) {
-            setupTitleBar(getString(R.string.app_name), null);
+            // show unread counts in title of actionbar
+            if (unreadCounts != 0) {
+                setupTitleBar(getString(R.string.app_name) + " (" + unreadCounts + ")", null);
+            } else {
+                setupTitleBar(getString(R.string.app_name), null);
+            }
             this.drawerToggle.setDrawerIndicatorEnabled(true);
         } else {
-            setupTitleBar(filter.getTitle(), filter.getSubtitle());
+            // show unread counts in title of actionbar
+            if (unreadCounts != 0) {
+                setupTitleBar(filter.getTitle() + " (" + unreadCounts + ")", filter.getSubtitle());
+            } else {
+                setupTitleBar(filter.getTitle(), filter.getSubtitle());
+            }
             this.drawerToggle.setDrawerIndicatorEnabled(false);
         }
 
         this.drawerLayout.closeDrawers();
+    }
+
+    /**
+     * Function to get unread counts in a narrow view.
+     * @param filter narrowfilter {@link NarrowFilter} passed
+     * @return unread counts
+     * @throws SQLException
+     */
+    private int getUnreadCountsForNarrow(NarrowFilter filter) throws SQLException {
+        int unreadCounts = 0;
+        String query;
+        List<String[]> res;
+        int pointer = app.getPointer();
+        if (filter == null) {
+            query = "SELECT count(case when m.id > " + pointer + " and (m." + Message.MESSAGE_READ_FIELD
+                    + " = 0 or m." + Message.MESSAGE_READ_FIELD + " = NULL) then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
+            + " FROM messages as m;";
+            res = app.getDao(Message.class).queryRaw(query).getResults();
+
+        } else if (filter instanceof NarrowFilterStream){
+            // only if narrow is a stream find unread counts
+            query = "SELECT count(case when m.id > " + pointer + " and (m." + Message.MESSAGE_READ_FIELD
+                    + " = 0 or m." + Message.MESSAGE_READ_FIELD + " = NULL) then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
+                    + " FROM messages as m where ? = m.recipients;";
+            res = app.getDao(Message.class).queryRaw(query, filter.getTitle()).getResults();
+        } else {
+            return 0;
+        }
+        if (res.size() != 0) {
+            unreadCounts = Integer.parseInt(res.get(0)[0]);
+        }
+
+        return unreadCounts;
     }
 
     private void setupTitleBar(String title, String subtitle) {
