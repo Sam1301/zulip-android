@@ -251,7 +251,7 @@ public class MessageListFragment extends Fragment implements MessageListener {
         adapter.setFooterShowing(true);
     }
 
-    public void onReadyToDisplay(boolean registered) {
+    public void onReadyToDisplay(boolean registered, boolean onStartUp) {
         if (initialized && !registered) {
             // Already have state, and already processed any events that came in
             // when resuming the existing queue.
@@ -262,7 +262,7 @@ public class MessageListFragment extends Fragment implements MessageListener {
         }
 
         initializeNarrow();
-        fetch();
+        fetch(onStartUp);
         initialized = true;
     }
 
@@ -294,7 +294,7 @@ public class MessageListFragment extends Fragment implements MessageListener {
         emptyTextView.setVisibility(View.VISIBLE);
     }
 
-    private void fetch() {
+    private void fetch(boolean onStartUp) {
         final AsyncGetOldMessages oldMessagesReq = new AsyncGetOldMessages(this);
         oldMessagesReq.setCallback(new ZulipAsyncPushTask.AsyncTaskCompleteListener() {
             @Override
@@ -312,8 +312,15 @@ public class MessageListFragment extends Fragment implements MessageListener {
                 adapter.setHeaderShowing(false);
             }
         });
-        oldMessagesReq.execute(app.getPointer(), LoadPosition.INITIAL, 100,
-                100, filter);
+
+        if (onStartUp) {
+            // on start up load 1000 messages after pointer in homeview
+            oldMessagesReq.execute(app.getPointer(), LoadPosition.INITIAL, 100,
+                    1000, null);
+        } else {
+            oldMessagesReq.execute(app.getPointer(), LoadPosition.INITIAL, 100,
+                    100, filter);
+        }
     }
 
     /**

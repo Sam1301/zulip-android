@@ -78,6 +78,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.j256.ormlite.android.AndroidDatabaseResults;
+import com.j256.ormlite.stmt.Where;
 import com.transitionseverywhere.Fade;
 import com.transitionseverywhere.TransitionManager;
 import com.transitionseverywhere.TransitionSet;
@@ -1938,33 +1939,55 @@ public class ZulipActivity extends BaseActivity implements
     }
 
     /**
-     * Function to get unread counts in a narrow view.
+     * Function to get unread counts in a narrowed view.
+     *
      * @param filter narrowfilter {@link NarrowFilter} passed
      * @return unread counts
      * @throws SQLException
      */
     private int getUnreadCountsForNarrow(NarrowFilter filter) throws SQLException {
         int unreadCounts = 0;
-        String query;
-        List<String[]> res;
         int pointer = app.getPointer();
-        if (filter == null) {
-            query = "SELECT count(case when m.id > " + pointer + " and (m." + Message.MESSAGE_READ_FIELD
-                    + " = 0 or m." + Message.MESSAGE_READ_FIELD + " = NULL) then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
-            + " FROM messages as m;";
-            res = app.getDao(Message.class).queryRaw(query).getResults();
 
-        } else if (filter instanceof NarrowFilterStream){
-            // only if narrow is a stream find unread counts
-            query = "SELECT count(case when m.id > " + pointer + " and (m." + Message.MESSAGE_READ_FIELD
-                    + " = 0 or m." + Message.MESSAGE_READ_FIELD + " = NULL) then 1 end) as " + ExpandableStreamDrawerAdapter.UNREAD_TABLE_NAME
-                    + " FROM messages as m where ? = m.recipients;";
-            res = app.getDao(Message.class).queryRaw(query, filter.getTitle()).getResults();
+        // Where to get all unread messages after pointer
+        Where<Message, Object> messageWhere = app.getDao(Message.class).queryBuilder().where()
+                .gt(Message.ID_FIELD, pointer).and().eq(Message.MESSAGE_READ_FIELD, false);
+
+        if (filter == null) {
+            // home view
+            // get all unread messages across all streams and private messages
+            List<Message> messages = messageWhere.query();
+
+            // loop through them and find which of them belong to an unmuted topic
+            for (Message message : messages) {
+                if (!mMutedTopics.isTopicMute(message)) {
+                    unreadCounts++;
+                }
+            }
+
+        } else if (filter instanceof NarrowFilterStream && TextUtils.isEmpty(filter.getSubtitle())){
+            // narrow is a stream
+            // get all unread messages in the stream
+            List<Message> messages = messageWhere.and().eq(Message.RECIPIENTS_FIELD, filter.getTitle()).query();
+
+            // loop through them and find which of them belong to an unmuted topic
+            for (Message message : messages) {
+                if (!mMutedTopics.isTopicMute(message)) {
+                    unreadCounts++;
+                }
+            }
+
+        } else if (filter instanceof NarrowFilterStream && !TextUtils.isEmpty(filter.getSubtitle())){
+            // narrow is a stream with subject
+            // get all unread messages under current topic
+            List<Message> messages = messageWhere.and().eq(Message.RECIPIENTS_FIELD, filter.getTitle()).query();
+
+            // include messages in the count even if topic is muted
+            if (messages != null) {
+                unreadCounts = messages.size();
+            }
         } else {
             return 0;
-        }
-        if (res.size() != 0) {
-            unreadCounts = Integer.parseInt(res.get(0)[0]);
         }
 
         return unreadCounts;
@@ -1984,7 +2007,7 @@ public class ZulipActivity extends BaseActivity implements
         narrowedList = MessageListFragment.newInstance(filter);
         // Push to the back stack if we are not already narrowed
         pushListFragment(narrowedList, NARROW);
-        narrowedList.onReadyToDisplay(true);
+        narrowedList.onReadyToDisplay(true, false);
         showView(appBarLayout);
     }
 
@@ -2377,10 +2400,10 @@ public class ZulipActivity extends BaseActivity implements
 
     }
 
-    public void onReadyToDisplay(boolean registered) {
-        homeList.onReadyToDisplay(registered);
+    public void onReadyToDisplay(boolean registered, boolean onStartUp) {
+        homeList.onReadyToDisplay(registered, onStartUp);
         if (narrowedList != null) {
-            narrowedList.onReadyToDisplay(registered);
+            narrowedList.onReadyToDisplay(registered, false);
         }
     }
 

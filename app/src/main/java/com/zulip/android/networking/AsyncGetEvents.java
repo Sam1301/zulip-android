@@ -207,7 +207,7 @@ public class AsyncGetEvents extends Thread {
                     @Override
                     public void run() {
                         mActivity.getPeopleAdapter().refresh();
-                        mActivity.onReadyToDisplay(true);
+                        mActivity.onReadyToDisplay(true, true);
                         mActivity.checkAndSetupStreamsDrawer();
                         if (mActivity.commonProgressDialog != null && mActivity.commonProgressDialog.isShowing()) {
                             mActivity.commonProgressDialog.dismiss();
@@ -277,7 +277,7 @@ public class AsyncGetEvents extends Thread {
                             mActivity.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    mActivity.onReadyToDisplay(false);
+                                    mActivity.onReadyToDisplay(false, false);
                                 }
                             });
                         }
