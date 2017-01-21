@@ -39,7 +39,7 @@ public class Stream {
     private String description;
 
     @SerializedName("subscribers")
-    private List<Integer> subscribers;
+    private List<String> subscribers;
 
     @SerializedName("pin_to_top")
     private boolean pinToTop;

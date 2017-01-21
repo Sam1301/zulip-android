@@ -21,6 +21,7 @@ import com.zulip.android.networking.response.UserConfigurationResponse;
 import com.zulip.android.networking.response.events.EventsBranch;
 import com.zulip.android.networking.response.events.GetEventResponse;
 import com.zulip.android.networking.response.events.MessageWrapper;
+import com.zulip.android.networking.response.events.SubscriptionWrapper;
 import com.zulip.android.util.MutedTopics;
 import com.zulip.android.util.TypeSwapper;
 import com.zulip.android.util.ZLog;
@@ -31,6 +32,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -289,6 +291,27 @@ public class AsyncGetEvents extends Thread {
      */
     private void processEvents(GetEventResponse events) {
         // In task thread
+
+        // get updated subscriptions from events
+        List<List<Stream>> subscriptions = events.getEventsOf(EventsBranch.BranchType.SUBSCRIPTIONS, new TypeSwapper<SubscriptionWrapper, List<Stream>> () {
+            @Override
+            public List<Stream> convert(SubscriptionWrapper streamWrapper) {
+                return streamWrapper.getStreams();
+            }
+        });
+
+        List<Stream> streams = new ArrayList<>();
+        for (List<Stream> eventStreams : subscriptions) {
+            streams.addAll(eventStreams);
+        }
+
+        if (!streams.isEmpty()) {
+            Log.i("AsyncGetEvents", "Received " + streams.size()
+                    + " streams");
+            processSubsciptions(streams);
+        }
+
+        // get messages from events
         List<Message> messages = events.getEventsOf(EventsBranch.BranchType.MESSAGE, new TypeSwapper<MessageWrapper, Message>() {
             @Override
             public Message convert(MessageWrapper messageWrapper) {
@@ -332,4 +355,28 @@ public class AsyncGetEvents extends Thread {
         }
     }
 
+    private void processSubsciptions(List<Stream> streams) {
+        RuntimeExceptionDao<Stream, Object> streamDao = app
+                .getDao(Stream.class);
+
+        for (int i = 0; i < streams.size(); i++) {
+            Stream stream = streams.get(i);
+            stream.getParsedColor();
+            stream.setSubscribed(true);
+            try {
+                streamDao.createOrUpdate(stream);
+            } catch (Exception e) {
+                ZLog.logException(e);
+            }
+        }
+
+        if (!streams.isEmpty() && mActivity != null) {
+            mActivity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mActivity.checkAndSetupStreamsDrawer();
+                }
+            });
+        }
+    }
 }
