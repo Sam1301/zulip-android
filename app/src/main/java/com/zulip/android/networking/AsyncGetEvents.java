@@ -32,7 +32,6 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -177,8 +176,7 @@ public class AsyncGetEvents extends Thread {
                             } else {
                                 personDao.update(person);
                             }
-                        }
-                        catch(Exception e) {
+                        } catch (Exception e) {
                             ZLog.logException(e);
                         }
                     }
@@ -291,24 +289,12 @@ public class AsyncGetEvents extends Thread {
      */
     private void processEvents(GetEventResponse events) {
         // In task thread
+        List<EventsBranch> subscriptions = events.getEventsOfBranchType(EventsBranch.BranchType.SUBSCRIPTIONS);
 
-        // get updated subscriptions from events
-        List<List<Stream>> subscriptions = events.getEventsOf(EventsBranch.BranchType.SUBSCRIPTIONS, new TypeSwapper<SubscriptionWrapper, List<Stream>> () {
-            @Override
-            public List<Stream> convert(SubscriptionWrapper streamWrapper) {
-                return streamWrapper.getStreams();
-            }
-        });
-
-        List<Stream> streams = new ArrayList<>();
-        for (List<Stream> eventStreams : subscriptions) {
-            streams.addAll(eventStreams);
-        }
-
-        if (!streams.isEmpty()) {
-            Log.i("AsyncGetEvents", "Received " + streams.size()
-                    + " streams");
-            processSubsciptions(streams);
+        if (!subscriptions.isEmpty()) {
+            Log.i("AsyncGetEvents", "Received " + subscriptions.size()
+                    + " streams event");
+            processSubsciptions(subscriptions);
         }
 
         // get messages from events
@@ -355,28 +341,51 @@ public class AsyncGetEvents extends Thread {
         }
     }
 
-    private void processSubsciptions(List<Stream> streams) {
+    private void processSubsciptions(List<EventsBranch> subscriptionWrapperList) {
         RuntimeExceptionDao<Stream, Object> streamDao = app
                 .getDao(Stream.class);
 
-        for (int i = 0; i < streams.size(); i++) {
-            Stream stream = streams.get(i);
-            stream.getParsedColor();
-            stream.setSubscribed(true);
-            try {
-                streamDao.createOrUpdate(stream);
-            } catch (Exception e) {
-                ZLog.logException(e);
+        for (EventsBranch wrapper : subscriptionWrapperList) {
+            SubscriptionWrapper subscriptionwrapper = (SubscriptionWrapper) wrapper;
+            List<Stream> streams = subscriptionwrapper.getStreams();
+            if (subscriptionwrapper.getOperation().equalsIgnoreCase(SubscriptionWrapper.OPERATION_ADD)) {
+
+                for (Stream stream : streams) {
+                    stream.getParsedColor();
+                    stream.setSubscribed(true);
+                    try {
+                        streamDao.createOrUpdate(stream);
+                    } catch (Exception e) {
+                        ZLog.logException(e);
+                    }
+                }
+            } else if (subscriptionwrapper.getOperation().equalsIgnoreCase(SubscriptionWrapper.OPERATION_UPDATE)) {
+                Stream stream = subscriptionwrapper.getUpdatedStream();
+                try {
+                    streamDao.createOrUpdate(stream);
+                } catch (Exception e) {
+                    ZLog.logException(e);
+                }
+            } else if (subscriptionwrapper.getOperation().equalsIgnoreCase(SubscriptionWrapper.OPERATION_REMOVE)) {
+                for (Stream stream : streams) {
+                    stream.getParsedColor();
+                    stream.setSubscribed(false);
+                    try {
+                        streamDao.createOrUpdate(stream);
+                    } catch (Exception e) {
+                        ZLog.logException(e);
+                    }
+                }
+            } else {
+                Log.d("AsyncEvents", "unknown operation for subscription type event");
             }
         }
 
-        if (!streams.isEmpty() && mActivity != null) {
-            mActivity.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    mActivity.checkAndSetupStreamsDrawer();
-                }
-            });
-        }
+        mActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mActivity.checkAndSetupStreamsDrawer();
+            }
+        });
     }
 }

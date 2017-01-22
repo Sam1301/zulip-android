@@ -211,4 +211,12 @@ public class Stream {
         return null;
     }
 
+    public void setFetchColor(String fetchedColor) {
+        this.fetchedColor = fetchedColor;
+        getParsedColor();
+    }
+
+    public void setInHomeView(boolean inHomeView) {
+        this.inHomeView = inHomeView;
+    }
 }
