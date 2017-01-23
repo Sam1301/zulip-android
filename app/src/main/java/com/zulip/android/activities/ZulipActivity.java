@@ -712,10 +712,12 @@ public class ZulipActivity extends BaseActivity implements
                         + " FROM streams as s LEFT JOIN messages as m ON s.name=m.recipients ";
                 if (!etSearchStream.getText().toString().equals("") && !etSearchStream.getText().toString().isEmpty()) {
                     //append where clause
-                    query += " WHERE s.name LIKE '%" + etSearchStream.getText().toString() + "%'" + " and s." + Stream.SUBSCRIBED_FIELD + " = " + "1 ";
+                    query += " WHERE s.name LIKE '%" + etSearchStream.getText().toString() + "%'"
+                    + " and s." + Stream.SUBSCRIBED_FIELD + " = 1 ";
                     //set visibility of this image false
                     ivSearchStreamCancel.setVisibility(View.VISIBLE);
                 } else {
+                    query += " WHERE s." + Stream.SUBSCRIBED_FIELD + " = 1 ";
                     //set visibility of this image false
                     query += " WHERE s." + Stream.SUBSCRIBED_FIELD + " = " + "1 ";
                     ivSearchStreamCancel.setVisibility(View.GONE);

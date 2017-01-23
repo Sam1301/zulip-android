@@ -39,7 +39,8 @@ public class ExpandableStreamDrawerAdapter extends SimpleCursorTreeAdapter {
                     Message.MESSAGE_READ_FIELD + " = 0 or messages." + Message.MESSAGE_READ_FIELD +
                     " = NULL) then 1 end) as unreadcount FROM messages " +
                     "JOIN streams ON streams.name=messages.recipients " +
-                    "WHERE streams.name like '" + groupCursor.getString(1) +
+                    "WHERE streams." + Stream.SUBSCRIBED_FIELD + " = 1 " +
+                    "and streams.name like '" + groupCursor.getString(1) +
                     "' group by subject").getResults();
         } catch (SQLException e) {
             ZLog.logException(e);
