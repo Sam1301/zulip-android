@@ -434,7 +434,7 @@ public class AsyncGetEvents extends Thread {
         mActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mActivity.onReadyToDisplay(true);
+                mActivity.onReadyToDisplay(true, false);
                 mActivity.checkAndSetupStreamsDrawer();
             }
         });
@@ -456,7 +456,7 @@ public class AsyncGetEvents extends Thread {
         mActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mActivity.onReadyToDisplay(true);
+                mActivity.onReadyToDisplay(true, false);
                 mActivity.checkAndSetupStreamsDrawer();
             }
         });

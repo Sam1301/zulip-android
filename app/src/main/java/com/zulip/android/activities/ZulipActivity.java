@@ -719,7 +719,6 @@ public class ZulipActivity extends BaseActivity implements
                 } else {
                     query += " WHERE s." + Stream.SUBSCRIBED_FIELD + " = 1 ";
                     //set visibility of this image false
-                    query += " WHERE s." + Stream.SUBSCRIBED_FIELD + " = " + "1 ";
                     ivSearchStreamCancel.setVisibility(View.GONE);
                 }
                 //append group by
