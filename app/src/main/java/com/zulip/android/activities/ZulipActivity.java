@@ -34,6 +34,7 @@ import android.provider.MediaStore;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
@@ -109,8 +110,8 @@ import com.zulip.android.networking.AsyncStatusUpdate;
 import com.zulip.android.networking.ZulipAsyncPushTask;
 import com.zulip.android.networking.response.UploadResponse;
 import com.zulip.android.util.AnimationHelper;
-import com.zulip.android.util.Constants;
 import com.zulip.android.util.CommonProgressDialog;
+import com.zulip.android.util.Constants;
 import com.zulip.android.util.FilePathHelper;
 import com.zulip.android.util.MutedTopics;
 import com.zulip.android.util.RemoveViewsOnScroll;
@@ -312,6 +313,7 @@ public class ZulipActivity extends BaseActivity implements
         }
 
         // update unread counts in the toolbar when recyclerview is scrolled
+
         int unreadCounts = 0;
         try {
             if (narrowedList == null) {
@@ -713,7 +715,7 @@ public class ZulipActivity extends BaseActivity implements
                 if (!etSearchStream.getText().toString().equals("") && !etSearchStream.getText().toString().isEmpty()) {
                     //append where clause
                     query += " WHERE s.name LIKE '%" + etSearchStream.getText().toString() + "%'"
-                    + " and s." + Stream.SUBSCRIBED_FIELD + " = 1 ";
+                            + " and s." + Stream.SUBSCRIBED_FIELD + " = 1 ";
                     //set visibility of this image false
                     ivSearchStreamCancel.setVisibility(View.VISIBLE);
                 } else {
@@ -1381,7 +1383,7 @@ public class ZulipActivity extends BaseActivity implements
             size = (int) getResources().getDimension(R.dimen.small_bubble);
         } else if (counts / 100 == 0) {
             size = (int) getResources().getDimension(R.dimen.medium_bubble);
-        } else if (counts / 1000 == 0){
+        } else if (counts / 1000 == 0) {
             size = (int) getResources().getDimension(R.dimen.large_bubble);
         } else {
             size = (int) getResources().getDimension(R.dimen.extra_large_bubble);
@@ -1961,12 +1963,17 @@ public class ZulipActivity extends BaseActivity implements
 
             // loop through them and find which of them belong to an unmuted topic
             for (Message message : messages) {
-                if (!mMutedTopics.isTopicMute(message)) {
-                    unreadCounts++;
+                Stream stream = message.getStream();
+                // if topic is muted, or stream is muted or stream is unsubscribed
+                if (mMutedTopics.isTopicMute(message) ||
+                        (stream != null && !stream.getInHomeView()) ||
+                        (stream != null && !stream.isSubscribed())) {
+                    continue;
                 }
+                unreadCounts++;
             }
 
-        } else if (filter instanceof NarrowFilterStream && TextUtils.isEmpty(filter.getSubtitle())){
+        } else if (filter instanceof NarrowFilterStream && TextUtils.isEmpty(filter.getSubtitle())) {
             // narrow is a stream
             // get all unread messages in the stream
             List<Message> messages = messageWhere.and().eq(Message.RECIPIENTS_FIELD, filter.getTitle()).query();
@@ -1978,7 +1985,7 @@ public class ZulipActivity extends BaseActivity implements
                 }
             }
 
-        } else if (filter instanceof NarrowFilterStream && !TextUtils.isEmpty(filter.getSubtitle())){
+        } else if (filter instanceof NarrowFilterStream && !TextUtils.isEmpty(filter.getSubtitle())) {
             // narrow is a stream with subject
             // get all unread messages under current topic
             List<Message> messages = messageWhere.and().eq(Message.RECIPIENTS_FIELD, filter.getTitle()).query();
@@ -2435,6 +2442,7 @@ public class ZulipActivity extends BaseActivity implements
     NarrowFilter narrowFilter;
     String prevId = null;
     int prevMessageSameCount = -1;
+
     private void showSnackbarNotification(Message[] messages) {
         MutedTopics mutedTopics = MutedTopics.get();
         String notificationMessage;
@@ -2476,7 +2484,7 @@ public class ZulipActivity extends BaseActivity implements
             });
         } else {
             if (messages.length == 1) tempMessage = messages[0];
-            String name = (tempMessage.getType() == MessageType.PRIVATE_MESSAGE) ? getString(R.string.notify_private, tempMessage.getSenderFullName()) : getString(R.string.notify_stream, tempMessage.getStream().getName() , tempMessage.getSubject());
+            String name = (tempMessage.getType() == MessageType.PRIVATE_MESSAGE) ? getString(R.string.notify_private, tempMessage.getSenderFullName()) : getString(R.string.notify_stream, tempMessage.getStream().getName(), tempMessage.getSubject());
             if (prevMessageSameCount > 0) name += " (" + prevMessageSameCount + ")";
             notificationMessage = getResources().getQuantityString(R.plurals.new_message, nonMutedMessagesCount, nonMutedMessagesCount, name);
             narrowFilter = (tempMessage.getType() == MessageType.PRIVATE_MESSAGE) ? new NarrowFilterPM(Arrays.asList(tempMessage.getRecipients(app))) : new NarrowFilterStream(tempMessage.getStream(), tempMessage.getSubject());
