@@ -1,15 +1,22 @@
 package com.zulip.android.models;
 
 import android.content.Context;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LevelListDrawable;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.text.Html;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.util.Linkify;
+import android.util.DisplayMetrics;
 import android.util.Log;
 
 import com.google.gson.annotations.SerializedName;
@@ -18,6 +25,7 @@ import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.misc.TransactionManager;
 import com.j256.ormlite.stmt.DeleteBuilder;
 import com.j256.ormlite.table.DatabaseTable;
+import com.squareup.picasso.Picasso;
 import com.zulip.android.R;
 import com.zulip.android.ZulipApp;
 import com.zulip.android.util.Constants;
@@ -359,8 +367,17 @@ public class Message {
             }
         };
 
+        Html.ImageGetter imageGetter = new Html.ImageGetter() {
+            @Override
+            public Drawable getDrawable(String source) {
+                LevelListDrawable d = new LevelListDrawable();
+                new ImageGetterAsyncTask(context, UrlHelper.addHost(source), d).execute();
+                return d;
+            }
+        };
+
         CustomHtmlToSpannedConverter converter = new CustomHtmlToSpannedConverter(
-                source, null, null, parser, emojiGetter, app.getServerURI(), context);
+                source, imageGetter, null, parser, emojiGetter, app.getServerURI(), context);
 
         return CustomHtmlToSpannedConverter.linkifySpanned(converter.convert(), Linkify.ALL);
     }
@@ -746,6 +763,56 @@ public class Message {
 
         public String getDisplayRecipient() {
             return displayRecipient;
+        }
+    }
+
+    // TODO: shift to its own class
+    static class ImageGetterAsyncTask extends AsyncTask<Void, Void, Bitmap> {
+
+
+        private LevelListDrawable levelListDrawable;
+        private Context context;
+        private String source;
+
+        public ImageGetterAsyncTask(Context context, String source, LevelListDrawable levelListDrawable) {
+            this.context = context;
+            this.source = source;
+            this.levelListDrawable = levelListDrawable;
+        }
+
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+            try {
+                return Picasso.with(context).load(source).get();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(final Bitmap bitmap) {
+            try {
+                Drawable d = new BitmapDrawable(context.getResources(), bitmap);
+                Point size = new Point();
+                size.x = context.getResources().getDisplayMetrics().widthPixels;
+                // Lets calculate the ratio according to the screen width in px
+                int multiplier = size.x / bitmap.getWidth();
+                levelListDrawable.addLevel(0, 0, d);
+                // Set bounds width  and height according to the bitmap resized size
+                Drawable empty = context.getResources().getDrawable(R.drawable.abc_btn_check_material);
+                levelListDrawable.setBounds(0, 0, bitmap.getWidth() * multiplier, bitmap.getHeight() * multiplier);
+                levelListDrawable.setLevel(0);
+            } catch (Exception e) { /* Like a null bitmap, etc. */
+                e.printStackTrace();
+            }
+        }
+
+        public static int convertDpToPixel(float dp, Context context){
+            Resources resources = context.getResources();
+            DisplayMetrics metrics = resources.getDisplayMetrics();
+            float px = dp * ((float)metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+            return Math.round(px);
         }
     }
 }
