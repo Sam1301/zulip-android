@@ -997,7 +997,7 @@ public class ZulipActivity extends BaseActivity implements
      *
      * @param file on local storage
      */
-    private void uploadFile(File file) {
+    private void uploadFile(final File file) {
 
         // create RequestBody instance from file
         RequestBody requestFile =
@@ -1025,7 +1025,8 @@ public class ZulipActivity extends BaseActivity implements
                         sendingMessage(false, loadingMsg);
 
                         // print message to compose box
-                        messageEt.append(" " + UrlHelper.addHost(filePathOnServer));
+                        messageEt.append(" [" + file.getName() + "](" +
+                                UrlHelper.addHost(filePathOnServer) + ")");
                     } else {
                         // remove loading message from the screen
                         sendingMessage(false, loadingMsg);
