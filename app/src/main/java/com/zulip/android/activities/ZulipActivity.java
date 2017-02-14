@@ -144,7 +144,7 @@ public class ZulipActivity extends BaseActivity implements
     private static final int MAX_THRESOLD_EMOJI_HINT = 5;
     //At these many letters the emoji/person hint starts to show up
     private static final int MIN_THRESOLD_EMOJI_HINT = 1;
-    private static final int PERMISSION_REQUEST_READ_CONTACTS = 1;
+    private static final int PERMISSION_REQUEST_READ_STORAGE = 1;
     private static final int REQUEST_TAKE_PHOTO = 2;
     private static final Interpolator FAST_OUT_SLOW_IN_INTERPOLATOR = new FastOutSlowInInterpolator();
     private static final int HIDE_FAB_AFTER_SEC = 5;
@@ -195,7 +195,7 @@ public class ZulipActivity extends BaseActivity implements
         }
     };
     private ExpandableStreamDrawerAdapter streamsDrawerAdapter;
-    private Uri mImageUri;
+    private Uri mFileUri;
     private ImageView cameraBtn;
     private String mCurrentPhotoPath;
     private Uri mPhotoURI;
@@ -560,12 +560,12 @@ public class ZulipActivity extends BaseActivity implements
         String type = intent.getType();
 
         if (Intent.ACTION_SEND.equals(action) && type != null) {
-            if (type.startsWith("image/")) {
-                // Handle single image being sent
-                handleSentImage(intent);
-            } else if ("text/plain".equals(type)) {
+            if ("text/plain".equals(type)) {
                 // Handle text being sent
                 handleSentText(intent);
+            } else {
+                // Handle single file being sent
+                handleSentFile(intent);
             }
         }
         // if device doesn't have camera, disable camera button
@@ -798,7 +798,7 @@ public class ZulipActivity extends BaseActivity implements
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if (type.startsWith("image/")) {
                 // Handle single image being sent
-                handleSentImage(intent);
+                handleSentFile(intent);
             } else if ("text/plain".equals(type)) {
                 // Handle text being sent
                 handleSentText(intent);
@@ -860,9 +860,9 @@ public class ZulipActivity extends BaseActivity implements
      * @param intent passed to the activity with action SEND
      */
     @SuppressLint("InlinedApi")
-    private void handleSentImage(Intent intent) {
-        mImageUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        if (mImageUri != null) {
+    private void handleSentFile(Intent intent) {
+        mFileUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        if (mFileUri != null) {
             // check if user has granted read external storage permission
             // for Android 6.0 or higher
             if (ContextCompat.checkSelfPermission(this,
@@ -871,14 +871,14 @@ public class ZulipActivity extends BaseActivity implements
                 // we need to request the permission.
                 ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        PERMISSION_REQUEST_READ_CONTACTS);
+                        PERMISSION_REQUEST_READ_STORAGE);
             } else {
                 // permission already granted
                 // start with file upload
                 startFileUpload();
             }
         } else {
-            Toast.makeText(this, R.string.cannot_find_image, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.cannot_find_file, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -887,7 +887,7 @@ public class ZulipActivity extends BaseActivity implements
                                            String permissions[], int[] grantResults) {
 
         switch (requestCode) {
-            case PERMISSION_REQUEST_READ_CONTACTS: {
+            case PERMISSION_REQUEST_READ_STORAGE: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -896,7 +896,7 @@ public class ZulipActivity extends BaseActivity implements
                     startFileUpload();
                 } else {
                     // permission denied
-                    Toast.makeText(this, R.string.cannot_upload_image, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.cannot_upload_file, Toast.LENGTH_SHORT).show();
                 }
             }
             break;
@@ -966,32 +966,25 @@ public class ZulipActivity extends BaseActivity implements
     }
 
     /**
-     * Helper function to update UI to indicate image is being uploaded and call
-     * {@link ZulipActivity#uploadFile(File)} to upload the image.
+     * Helper function to update UI to indicate file is being uploaded and call
+     * {@link #uploadFile(File)} to upload the image.
      */
     private void startFileUpload() {
-        // Update UI to indicate image is being loaded
-        // hide fab and display chatbox
-        displayFAB(false);
-        displayChatBox(true);
-        String loadingMsg = getResources().getString(R.string.uploading_message);
-        sendingMessage(true, loadingMsg);
-
         File file = null;
-        if (FilePathHelper.isLegacy(mImageUri)) {
-            file = FilePathHelper.getTempFileFromContentUri(this, mImageUri);
+        if (FilePathHelper.isLegacy(mFileUri)) {
+            file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
         } else {
             // get actual file path
-            String imageFilePath = FilePathHelper.getPath(this, mImageUri);
-            if (imageFilePath != null) {
-                file = new File(imageFilePath);
-            } else if ("content".equalsIgnoreCase(mImageUri.getScheme())) {
-                file = FilePathHelper.getTempFileFromContentUri(this, mImageUri);
+            String filePath = FilePathHelper.getPath(this, mFileUri);
+            if (filePath != null) {
+                file = new File(filePath);
+            } else if ("content".equalsIgnoreCase(mFileUri.getScheme())) {
+                file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
             }
         }
 
         if (file == null) {
-            Toast.makeText(this, R.string.invalid_image, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.invalid_file, Toast.LENGTH_SHORT).show();
             return;
         }
         // upload the file asynchronously to the server
@@ -1012,7 +1005,7 @@ public class ZulipActivity extends BaseActivity implements
 
         // MultipartBody.Part is used to send also the actual file name
         MultipartBody.Part body =
-                MultipartBody.Part.createFormData("picture", file.getName(), requestFile);
+                MultipartBody.Part.createFormData("file", file.getName(), requestFile);
 
         final String loadingMsg = getResources().getString(R.string.uploading_message);
 
