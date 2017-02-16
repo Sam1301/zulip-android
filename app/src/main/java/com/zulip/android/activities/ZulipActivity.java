@@ -104,7 +104,7 @@ import com.zulip.android.networking.util.DefaultCallback;
 import com.zulip.android.util.AnimationHelper;
 import com.zulip.android.util.CommonProgressDialog;
 import com.zulip.android.util.Constants;
-import com.zulip.android.util.FilePathHelper;
+import com.zulip.android.util.FileUtils;
 import com.zulip.android.util.MutedTopics;
 import com.zulip.android.util.RemoveViewsOnScroll;
 import com.zulip.android.util.SwipeRemoveLinearLayout;
@@ -993,15 +993,15 @@ public class ZulipActivity extends BaseActivity implements
      */
     private void startFileUpload() {
         File file = null;
-        if (FilePathHelper.isLegacy(mFileUri)) {
-            file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
+        if (FileUtils.isLegacy(mFileUri)) {
+            file = FileUtils.getTempFileFromContentUri(this, mFileUri);
         } else {
             // get actual file path
-            String filePath = FilePathHelper.getPath(this, mFileUri);
+            String filePath = FileUtils.getPath(this, mFileUri);
             if (filePath != null) {
                 file = new File(filePath);
             } else if ("content".equalsIgnoreCase(mFileUri.getScheme())) {
-                file = FilePathHelper.getTempFileFromContentUri(this, mFileUri);
+                file = FileUtils.getTempFileFromContentUri(this, mFileUri);
             }
         }
 
@@ -1023,7 +1023,7 @@ public class ZulipActivity extends BaseActivity implements
 
         // create RequestBody instance from file
         RequestBody requestFile =
-                RequestBody.create(MediaType.parse(getContentResolver().getType(mFileUri)), file);
+                RequestBody.create(MediaType.parse("multipart/form-data"), file);
 
         // MultipartBody.Part is used to send also the actual file name
         MultipartBody.Part body =
