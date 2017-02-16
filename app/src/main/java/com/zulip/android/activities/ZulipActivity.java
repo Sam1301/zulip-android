@@ -208,7 +208,7 @@ public class ZulipActivity extends BaseActivity implements
     private EditText etSearchStream;
     private ImageView ivSearchStreamCancel;
     private ListView peopleDrawer;
-    private  Toast toast;
+    private Toast toast;
     //
     private String streamSearchFilterKeyword = "";
     private SimpleCursorAdapter.ViewBinder peopleBinder = new SimpleCursorAdapter.ViewBinder() {
@@ -844,14 +844,14 @@ public class ZulipActivity extends BaseActivity implements
         // TODO: rearrange code
         // in else if upload file sent and show notification for it
         else if (requestCode == REQUEST_PICK_FILE && resultCode == RESULT_OK) {
-            List<Uri> fileUris = new ArrayList<> ();
+            List<Uri> fileUris = new ArrayList<>();
             if (data.getData() != null) {
                 fileUris.add(data.getData());
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
                 ClipData clipData = data.getClipData();
                 if (clipData != null) {
-                    for (int i = 0 ; i < clipData.getItemCount() ; i++) {
+                    for (int i = 0; i < clipData.getItemCount(); i++) {
                         fileUris.add(clipData.getItemAt(i).getUri());
                     }
                 }
@@ -864,6 +864,7 @@ public class ZulipActivity extends BaseActivity implements
 
     /**
      * Function invoked when a user shares a text with the zulip app
+     *
      * @param intent passed to the activity with action SEND
      */
     private void handleSentText(Intent intent) {
@@ -1138,7 +1139,7 @@ public class ZulipActivity extends BaseActivity implements
      */
     private void showSoftKeyboard() {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT,InputMethodManager.HIDE_IMPLICIT_ONLY);
+        imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, InputMethodManager.HIDE_IMPLICIT_ONLY);
     }
 
     private void displayChatBox(boolean show) {
@@ -1726,7 +1727,7 @@ public class ZulipActivity extends BaseActivity implements
             drawerLayout.closeDrawers();
             return;
         }
-       //check for narrowed or not
+        //check for narrowed or not
         if (narrowedList == null) {
 
             if (backPressedOnce) {
@@ -1781,7 +1782,8 @@ public class ZulipActivity extends BaseActivity implements
 
     /**
      * If previous toast is showing cancel it and show new one
-     * @param string message in the toast
+     *
+     * @param string   message in the toast
      * @param duration of the toast to be shown
      */
     private void showToast(String string, int duration) {
@@ -1847,7 +1849,7 @@ public class ZulipActivity extends BaseActivity implements
         if (!person.getEmail().equals(app.getYou().getEmail()))
             list.add(app.getYou());
         doNarrow(new NarrowFilterPM(list));
-        onNarrowFillSendBoxPrivate(new Person[]{person},false);
+        onNarrowFillSendBoxPrivate(new Person[]{person}, false);
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
@@ -1887,7 +1889,8 @@ public class ZulipActivity extends BaseActivity implements
     /**
      * This method creates a new Instance of the MessageListFragment and displays it with the filter
      * whiling keeping the view anchored at {@param messageId}.
-     * @param filter NarrowFilter passed
+     *
+     * @param filter    NarrowFilter passed
      * @param messageId used as anchor for fetching messages
      */
     public void doNarrow(NarrowFilter filter, int messageId) {
@@ -2184,7 +2187,7 @@ public class ZulipActivity extends BaseActivity implements
     private void logout() {
         commonProgressDialog.showWithMessage(getString(R.string.logging_out));
         this.logged_in = false;
-        final String serverUrl = app.getServerHostUri() ;
+        final String serverUrl = app.getServerHostUri();
 
         notifications.logOut(new Runnable() {
             public void run() {
@@ -2330,6 +2333,7 @@ public class ZulipActivity extends BaseActivity implements
     NarrowFilter narrowFilter;
     String prevId = null;
     int prevMessageSameCount = -1;
+
     private void showSnackbarNotification(Message[] messages) {
         MutedTopics mutedTopics = MutedTopics.get();
         String notificationMessage;
@@ -2371,7 +2375,7 @@ public class ZulipActivity extends BaseActivity implements
             });
         } else {
             if (messages.length == 1) tempMessage = messages[0];
-            String name = (tempMessage.getType() == MessageType.PRIVATE_MESSAGE) ? getString(R.string.notify_private, tempMessage.getSenderFullName()) : getString(R.string.notify_stream, tempMessage.getStream().getName() , tempMessage.getSubject());
+            String name = (tempMessage.getType() == MessageType.PRIVATE_MESSAGE) ? getString(R.string.notify_private, tempMessage.getSenderFullName()) : getString(R.string.notify_stream, tempMessage.getStream().getName(), tempMessage.getSubject());
             if (prevMessageSameCount > 0) name += " (" + prevMessageSameCount + ")";
             notificationMessage = getResources().getQuantityString(R.plurals.new_message, nonMutedMessagesCount, nonMutedMessagesCount, name);
             narrowFilter = (tempMessage.getType() == MessageType.PRIVATE_MESSAGE) ? new NarrowFilterPM(Arrays.asList(tempMessage.getRecipients(app))) : new NarrowFilterStream(tempMessage.getStream(), tempMessage.getSubject());
