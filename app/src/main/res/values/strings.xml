@@ -156,4 +156,7 @@
     <string name="copy_message_fetch">Copying message to clipboard</string>
     <string name="copy_failed">Copying to clipboard failed</string>
     <string name="attach">Attach</string>
+    <string name="notif_title">Upload to Zulip</string>
+    <string name="init_notif_title">Starting upload</string>
+    <string name="finish_notif_title">complete</string>
 </resources>
