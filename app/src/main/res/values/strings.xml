@@ -160,4 +160,6 @@
     <string name="init_notif_title">Starting upload</string>
     <string name="finish_notif_title">complete</string>
     <string name="upload_big_file">Yowza, that’s a big file.</string>
+    <string name="photo_dialog">Take photo</string>
+    <string name="pick_dialog">Pick a file</string>
 </resources>
