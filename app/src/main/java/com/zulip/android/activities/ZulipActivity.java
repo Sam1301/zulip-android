@@ -361,7 +361,7 @@ public class ZulipActivity extends BaseActivity implements
         onTextChangeOfPeopleSearchEditText();
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(this)
-                .setColor(getColor(R.color.notif_background));
+                .setColor(getResources().getColor(R.color.notif_background));
         ivSearchPeopleCancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -828,7 +828,7 @@ public class ZulipActivity extends BaseActivity implements
         if (mBuilder == null) {
             mBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(this)
                     .setContentTitle(getString(R.string.notif_title))
-                    .setColor(getColor(R.color.notif_background));
+                    .setColor(getResources().getColor(R.color.notif_background));
         }
 
         // Get action and MIME type of intent
@@ -870,8 +870,7 @@ public class ZulipActivity extends BaseActivity implements
 
             // activity transition animation
             ActivityTransitionAnim.transition(ZulipActivity.this);
-        }
-        else if (requestCode == REQUEST_PICK_FILE && resultCode == RESULT_OK) {
+        } else if (requestCode == REQUEST_PICK_FILE && resultCode == RESULT_OK) {
             List<Uri> fileUris = new ArrayList<>();
             if (data.getData() != null) {
                 fileUris.add(data.getData());
@@ -1143,8 +1142,6 @@ public class ZulipActivity extends BaseActivity implements
         // MultipartBody.Part is used to send also the actual file name
         MultipartBody.Part body = prepareFilePart("file", file, notifId);
 
-        final String loadingMsg = getResources().getString(R.string.uploading_message);
-
         // start notification
         setNotification(notifId, getString(R.string.init_notif_title));
 
@@ -1154,40 +1151,44 @@ public class ZulipActivity extends BaseActivity implements
         call.enqueue(new DefaultCallback<UploadResponse>() {
             @Override
             public void onSuccess(Call<UploadResponse> call, Response<UploadResponse> response) {
-                if (!isDestroyed()) {
-                    String filePathOnServer = "";
-                    UploadResponse uploadResponse = response.body();
-                    filePathOnServer = uploadResponse.getUri();
-                    if (!filePathOnServer.equals("")) {
-                        endNotification(notifId, getString(R.string.finish_notif_title));
-
-                        // add uploaded file url on server to composed message
-                        messageEt.append("\n[" + file.getName() + "](" +
-                                UrlHelper.addHost(filePathOnServer) + ")");
-                        displayFAB(false);
-                        displayChatBox(true);
-                    } else {
-                        endNotification(notifId, getString(R.string.failed_to_upload));
-                    }
-                    mNotificationManager.cancel(notifId);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+                    return;
                 }
+                String filePathOnServer = "";
+                UploadResponse uploadResponse = response.body();
+                filePathOnServer = uploadResponse.getUri();
+                if (!filePathOnServer.equals("")) {
+                    endNotification(notifId, getString(R.string.finish_notif_title));
+
+                    // add uploaded file url on server to composed message
+                    messageEt.append("\n[" + file.getName() + "](" +
+                            UrlHelper.addHost(filePathOnServer) + ")");
+                    displayFAB(false);
+                    displayChatBox(true);
+                } else {
+                    endNotification(notifId, getString(R.string.failed_to_upload));
+                }
+                mNotificationManager.cancel(notifId);
+
             }
 
             @Override
             public void onError(Call<UploadResponse> call, Response<UploadResponse> response) {
-                if (!isDestroyed()) {
-                    endNotification(notifId, getString(R.string.failed_to_upload));
-                    mNotificationManager.cancel(notifId);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+                    return;
                 }
+                endNotification(notifId, getString(R.string.failed_to_upload));
+                mNotificationManager.cancel(notifId);
             }
 
             @Override
             public void onFailure(Call<UploadResponse> call, Throwable t) {
-                if (!isDestroyed()) {
-                    endNotification(notifId, getString(R.string.failed_to_upload));
-                    mNotificationManager.cancel(notifId);
-                    ZLog.logException(t);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+                    return;
                 }
+                endNotification(notifId, getString(R.string.failed_to_upload));
+                mNotificationManager.cancel(notifId);
+                ZLog.logException(t);
             }
         });
     }
