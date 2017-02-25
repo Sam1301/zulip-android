@@ -361,7 +361,7 @@ public class ZulipActivity extends BaseActivity implements
         onTextChangeOfPeopleSearchEditText();
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(this)
-                .setColor(getResources().getColor(R.color.notif_background));
+                .setColor(ContextCompat.getColor(this, R.color.notif_background));
         ivSearchPeopleCancel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -828,7 +828,7 @@ public class ZulipActivity extends BaseActivity implements
         if (mBuilder == null) {
             mBuilder = (NotificationCompat.Builder) new NotificationCompat.Builder(this)
                     .setContentTitle(getString(R.string.notif_title))
-                    .setColor(getResources().getColor(R.color.notif_background));
+                    .setColor(ContextCompat.getColor(this, R.color.notif_background));
         }
 
         // Get action and MIME type of intent
