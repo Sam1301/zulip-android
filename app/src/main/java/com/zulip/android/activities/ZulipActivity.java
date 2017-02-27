@@ -43,6 +43,7 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.view.animation.FastOutSlowInInterpolator;
@@ -103,9 +104,8 @@ import com.zulip.android.networking.AsyncGetEvents;
 import com.zulip.android.networking.AsyncSend;
 import com.zulip.android.networking.AsyncStatusUpdate;
 import com.zulip.android.networking.UploadProgressRequest;
+import com.zulip.android.networking.UploadService;
 import com.zulip.android.networking.ZulipAsyncPushTask;
-import com.zulip.android.networking.response.UploadResponse;
-import com.zulip.android.networking.util.DefaultCallback;
 import com.zulip.android.util.ActivityTransitionAnim;
 import com.zulip.android.util.AnimationHelper;
 import com.zulip.android.util.CommonProgressDialog;
@@ -115,7 +115,6 @@ import com.zulip.android.util.ListDialog;
 import com.zulip.android.util.MutedTopics;
 import com.zulip.android.util.RemoveViewsOnScroll;
 import com.zulip.android.util.SwipeRemoveLinearLayout;
-import com.zulip.android.util.UrlHelper;
 import com.zulip.android.util.ZLog;
 import com.zulip.android.viewholders.TopSnackBar;
 
@@ -134,8 +133,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import okhttp3.MultipartBody;
-import retrofit2.Call;
-import retrofit2.Response;
 
 /**
  * The main Activity responsible for holding the {@link MessageListFragment} which has the list to the
@@ -214,7 +211,7 @@ public class ZulipActivity extends BaseActivity implements
     private ListView peopleDrawer;
     private Toast toast;
     private ImageView addFileBtn;
-
+    public static final String PROGRESS_UPDATE = "progress";
     //
     private String streamSearchFilterKeyword = "";
     private SimpleCursorAdapter.ViewBinder peopleBinder = new SimpleCursorAdapter.ViewBinder() {
@@ -340,6 +337,7 @@ public class ZulipActivity extends BaseActivity implements
         this.logged_in = true;
         notifications = new Notifications(this);
         notifications.register();
+        registerReceiver();
         setContentView(R.layout.main);
         commonProgressDialog = new CommonProgressDialog(this);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -1130,69 +1128,93 @@ public class ZulipActivity extends BaseActivity implements
      * @param file on local storage
      */
     private void uploadFile(final File file) {
+
         // check if file size is greater than 10MB
         if (file.length() / Math.pow(1024, 2) > 10) {
             Toast.makeText(this, R.string.upload_big_file, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // generate unique notification Id for this upload
-        final int notifId = (int) (new Date().getTime() % Integer.MAX_VALUE);
+//        // generate unique notification Id for this upload
+//        final int notifId = (int) (new Date().getTime() % Integer.MAX_VALUE);
+//
+//        // MultipartBody.Part is used to send also the actual file name
+//        MultipartBody.Part body = prepareFilePart("file", file, notifId);
+//
+//        // start notification
+//        setNotification(notifId, getString(R.string.init_notif_title));
+//
+//        // finally, execute the request
+//        // create upload service client
+//        Call<UploadResponse> call = ((ZulipApp) getApplicationContext()).getZulipServices().upload(body);
+//        call.enqueue(new DefaultCallback<UploadResponse>() {
+//            @Override
+//            public void onSuccess(Call<UploadResponse> call, Response<UploadResponse> response) {
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+//                    return;
+//                }
+//                String filePathOnServer = "";
+//                UploadResponse uploadResponse = response.body();
+//                filePathOnServer = uploadResponse.getUri();
+//                if (!filePathOnServer.equals("")) {
+//                    endNotification(notifId, getString(R.string.finish_notif_title));
+//
+//                    // add uploaded file url on server to composed message
+//                    messageEt.append("\n[" + file.getName() + "](" +
+//                            UrlHelper.addHost(filePathOnServer) + ")");
+//                    displayFAB(false);
+//                    displayChatBox(true);
+//                } else {
+//                    endNotification(notifId, getString(R.string.failed_to_upload));
+//                }
+//                mNotificationManager.cancel(notifId);
+//
+//            }
+//
+//            @Override
+//            public void onError(Call<UploadResponse> call, Response<UploadResponse> response) {
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+//                    return;
+//                }
+//                endNotification(notifId, getString(R.string.failed_to_upload));
+//                mNotificationManager.cancel(notifId);
+//            }
+//
+//            @Override
+//            public void onFailure(Call<UploadResponse> call, Throwable t) {
+//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
+//                    return;
+//                }
+//                endNotification(notifId, getString(R.string.failed_to_upload));
+//                mNotificationManager.cancel(notifId);
+//                ZLog.logException(t);
+//            }
+//        });
 
-        // MultipartBody.Part is used to send also the actual file name
-        MultipartBody.Part body = prepareFilePart("file", file, notifId);
-
-        // start notification
-        setNotification(notifId, getString(R.string.init_notif_title));
-
-        // finally, execute the request
-        // create upload service client
-        Call<UploadResponse> call = ((ZulipApp) getApplicationContext()).getZulipServices().upload(body);
-        call.enqueue(new DefaultCallback<UploadResponse>() {
-            @Override
-            public void onSuccess(Call<UploadResponse> call, Response<UploadResponse> response) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
-                    return;
-                }
-                String filePathOnServer = "";
-                UploadResponse uploadResponse = response.body();
-                filePathOnServer = uploadResponse.getUri();
-                if (!filePathOnServer.equals("")) {
-                    endNotification(notifId, getString(R.string.finish_notif_title));
-
-                    // add uploaded file url on server to composed message
-                    messageEt.append("\n[" + file.getName() + "](" +
-                            UrlHelper.addHost(filePathOnServer) + ")");
-                    displayFAB(false);
-                    displayChatBox(true);
-                } else {
-                    endNotification(notifId, getString(R.string.failed_to_upload));
-                }
-                mNotificationManager.cancel(notifId);
-
-            }
-
-            @Override
-            public void onError(Call<UploadResponse> call, Response<UploadResponse> response) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
-                    return;
-                }
-                endNotification(notifId, getString(R.string.failed_to_upload));
-                mNotificationManager.cancel(notifId);
-            }
-
-            @Override
-            public void onFailure(Call<UploadResponse> call, Throwable t) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed()) {
-                    return;
-                }
-                endNotification(notifId, getString(R.string.failed_to_upload));
-                mNotificationManager.cancel(notifId);
-                ZLog.logException(t);
-            }
-        });
+        Intent intent = new Intent(this, UploadService.class);
+        intent.putExtra("file_path", file.getPath());
+        startService(intent);
     }
 
+    private void registerReceiver(){
+
+        LocalBroadcastManager bManager = LocalBroadcastManager.getInstance(this);
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(PROGRESS_UPDATE);
+        bManager.registerReceiver(uploadBroadcastReceiver, intentFilter);
+
+    }
+
+    private BroadcastReceiver uploadBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            if(intent.getAction().equals(PROGRESS_UPDATE)){
+
+                Toast.makeText(ZulipActivity.this, "completion broadcast receiver received", Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
     /**
      * Returns a cursor for the combinedAdapter used to suggest Emoji when ':' is typed in the {@link #messageEt}
      *

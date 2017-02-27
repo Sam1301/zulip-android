@@ -5,7 +5,6 @@ import com.zulip.android.networking.response.EditResponse;
 import com.zulip.android.networking.response.GetMessagesResponse;
 import com.zulip.android.networking.response.LoginResponse;
 import com.zulip.android.networking.response.RawMessageResponse;
-import com.zulip.android.networking.response.UploadResponse;
 import com.zulip.android.networking.response.UserConfigurationResponse;
 import com.zulip.android.networking.response.ZulipBackendResponse;
 import com.zulip.android.networking.response.events.GetEventResponse;
@@ -63,7 +62,7 @@ public interface ZulipServices {
     @Streaming
     @Multipart
     @POST("v1/user_uploads")
-    Call<UploadResponse> upload(@Part MultipartBody.Part file);
+    Call<ResponseBody> upload(@Part MultipartBody.Part file);
 
     @FormUrlEncoded
     @PATCH("v1/messages/{id}")

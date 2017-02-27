@@ -301,7 +301,7 @@ public class PhotoViewActivity extends AppCompatActivity implements ActivityComp
         @Override
         protected void onPostExecute(String result) {
 
-            mBuilder.setContentText("Download complete");
+            mBuilder.setContentText("Upload complete");
             mBuilder.setSmallIcon(android.R.drawable.stat_sys_download_done);
             mBuilder.setProgress(0, 0, false);
             Toast.makeText(PhotoViewActivity.this, "Saved at " + result, Toast.LENGTH_LONG).show();

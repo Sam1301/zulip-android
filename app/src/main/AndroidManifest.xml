@@ -114,7 +114,7 @@
         <service
             android:name=".widget.ZulipWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
-
+        <service android:name=".networking.UploadService"/>
         <activity android:name=".widget.ZulipWidgetConfigureActivity">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />

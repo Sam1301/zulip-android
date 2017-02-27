@@ -34,6 +34,7 @@ import com.zulip.android.models.Person;
 import com.zulip.android.models.Presence;
 import com.zulip.android.models.Stream;
 import com.zulip.android.networking.AsyncUnreadMessagesUpdate;
+import com.zulip.android.networking.UploadService;
 import com.zulip.android.networking.ZulipInterceptor;
 import com.zulip.android.networking.response.UserConfigurationResponse;
 import com.zulip.android.networking.response.events.EventsBranch;
@@ -56,6 +57,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 import io.fabric.sdk.android.Fabric;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -204,6 +206,28 @@ public class ZulipApp extends Application {
                     .create(ZulipServices.class);
         }
         return zulipServices;
+    }
+
+    public ZulipServices getUploadService(final UploadService.ProgressListener listener) {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(new ZulipInterceptor())
+                .addNetworkInterceptor(new Interceptor() {
+                    @Override public okhttp3.Response intercept(Chain chain) throws IOException {
+                        okhttp3.Response originalResponse = chain.proceed(chain.request());
+                        return originalResponse.newBuilder()
+                                .body(new UploadService.ProgressResponseBody(originalResponse.body(), listener))
+                                .build();
+                    }
+                })
+                .build();
+        Retrofit retrofit = new Retrofit.Builder()
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create(getGson()))
+                .baseUrl(getServerURI())
+                .build();
+
+        ZulipServices retrofitInterface = retrofit.create(ZulipServices.class);
+        return retrofitInterface;
     }
 
     public void setZulipServices(ZulipServices zulipServices) {
